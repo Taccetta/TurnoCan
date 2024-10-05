@@ -202,19 +202,14 @@ class ClientListWidget(QWidget):
         layout.addWidget(self.client_list)
 
         # Uncomment for testing
-        # self.test_button = QPushButton("Test")
-        # self.test_button.clicked.connect(self.create_random_clients)
-        # layout.addWidget(self.test_button)
-
+        self.test_button = QPushButton("Test")
+        self.test_button.clicked.connect(self.create_random_clients)
+        layout.addWidget(self.test_button)
 
         # Client count label
         self.client_count_label = QLabel()
         self.client_count_label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.client_count_label)
-
-        # Client list
-        self.client_list.itemDoubleClicked.connect(self.edit_client)
-        layout.addWidget(self.client_list)
 
         # Load clients when initialized
         self.load_clients()
@@ -286,9 +281,18 @@ class ClientListWidget(QWidget):
 
     def edit_client(self, item):
         client_id = item.data(Qt.UserRole)
-        dialog = ClientEditDialog(client_id)
-        if dialog.exec_():
-            self.load_clients()
+        session = Session()
+        client = session.query(Client).get(client_id)
+        session.close()  # Cerrar la sesión lo antes posible
+
+        if client:
+            dialog = ClientEditDialog(client_id)
+
+            # Solo si se presionó OK o Eliminar, actualizamos la lista
+            if dialog.exec_() == QDialog.Accepted:
+                self.load_clients()
+        else:
+            print("No se pudo encontrar el cliente para editar.")
 
     def create_random_clients(self):
         session = Session()
@@ -335,8 +339,8 @@ class ClientEditDialog(QDialog):
         self.setLayout(layout)
 
         # Load client data
-        session = Session()
-        self.client = session.query(Client).get(client_id)
+        self.session = Session()
+        self.client = self.session.query(Client).get(client_id)
 
         # Input fields with client data
         self.lastname_input = QLineEdit(self.client.lastname)
@@ -382,10 +386,8 @@ class ClientEditDialog(QDialog):
         # Delete button
         delete_button = QPushButton("Eliminar Cliente")
         delete_button.clicked.connect(self.delete_client)
-        delete_button.setObjectName("delete-button")  # Asigna el nombre de objeto aquí
+        delete_button.setObjectName("delete-button")
         layout.addWidget(delete_button)
-
-        session.close()
 
         # Apply styles
         self.apply_styles(button_box)
@@ -432,71 +434,72 @@ class ClientEditDialog(QDialog):
         self.setStyleSheet(style)
 
     def load_breeds(self):
-        session = Session()
-        breeds = session.query(Breed).order_by(Breed.name).all()
+        breeds = self.session.query(Breed).order_by(Breed.name).all()
         self.breed_combo.addItem("Seleccione una raza")
         self.breed_combo.addItem("Otro")
         for breed in breeds:
             self.breed_combo.addItem(breed.name)
-        session.close()
 
     def accept(self):
-        session = Session()
-        client = session.query(Client).get(self.client_id)
-        client.lastname = self.lastname_input.text().capitalize()
-        client.name = self.name_input.text().capitalize()
-        client.address = self.address_input.text()
-        client.phone = self.phone_input.text()
-        client.dog_name = self.dog_name_input.text().capitalize()
-        
-        breed = self.breed_combo.currentText()
-        if breed == "Otro":
-            breed = QInputDialog.getText(self, "Nueva Raza", "Ingrese el nombre de la nueva raza:")[0].strip()
-            if not breed:
-                QMessageBox.warning(self, "Error", "Por favor, ingrese una raza")
+        try:
+            self.client.lastname = self.lastname_input.text().capitalize()
+            self.client.name = self.name_input.text().capitalize()
+            self.client.address = self.address_input.text()
+            self.client.phone = self.phone_input.text()
+            self.client.dog_name = self.dog_name_input.text().capitalize()
+            
+            breed = self.breed_combo.currentText()
+            if breed == "Otro":
+                breed = QInputDialog.getText(self, "Nueva Raza", "Ingrese el nombre de la nueva raza:")[0].strip()
+                if not breed:
+                    QMessageBox.warning(self, "Error", "Por favor, ingrese una raza")
+                    return
+                breed = breed.capitalize()
+                existing_breed = self.session.query(Breed).filter(Breed.name.ilike(breed)).first()
+                if existing_breed:
+                    QMessageBox.warning(self, "Advertencia", f"La raza '{breed}' ya existe en el listado")
+                else:
+                    new_breed = Breed(name=breed)
+                    self.session.add(new_breed)
+                    self.session.commit()
+                    self.breed_combo.addItem(breed)
+            elif breed == "Seleccione una raza":
+                QMessageBox.warning(self, "Error", "Por favor, seleccione una raza")
                 return
-            breed = breed.capitalize()
-            existing_breed = session.query(Breed).filter(Breed.name.ilike(breed)).first()
-            if existing_breed:
-                QMessageBox.warning(self, "Advertencia", f"La raza '{breed}' ya existe en el listado")
-            else:
-                new_breed = Breed(name=breed)
-                session.add(new_breed)
-                session.commit()
-                self.breed_combo.addItem(breed)
-        elif breed == "Seleccione una raza":
-            QMessageBox.warning(self, "Error", "Por favor, seleccione una raza")
-            return
-        
-        client.breed = breed
-        client.comments = self.comments_input.toPlainText()
-        session.commit()
-        session.close()
-        super().accept()
+            
+            self.client.breed = breed
+            self.client.comments = self.comments_input.toPlainText()
+            self.session.commit()
+            super().accept()
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Ocurrió un error al guardar los cambios: {str(e)}")
+        finally:
+            self.session.close()
 
     def delete_client(self):
         confirm = QMessageBox.question(self, "Confirmar Eliminación", 
                                        "¿Está seguro de que desea eliminar este cliente? Se eliminarán todos sus turnos futuros.",
                                        QMessageBox.Yes | QMessageBox.No)
         if confirm == QMessageBox.Yes:
-            session = Session()
-            client = session.query(Client).get(self.client_id)
-            
-            if client:
-                future_appointments = session.query(Appointment).filter(
+            try:
+                future_appointments = self.session.query(Appointment).filter(
                     Appointment.client_id == self.client_id,
                     Appointment.date >= datetime.date.today()
                 ).all()
                 for appointment in future_appointments:
-                    session.delete(appointment)
+                    self.session.delete(appointment)
                 
-                session.delete(client)
-                session.commit()
-                session.close()
+                self.session.delete(self.client)
+                self.session.commit()
                 super().accept()
-            else:
-                QMessageBox.warning(self, "Error", "No se pudo encontrar el cliente para eliminar.")
-                session.close()
+            except Exception as e:
+                QMessageBox.critical(self, "Error", f"No se pudo eliminar el cliente: {str(e)}")
+            finally:
+                self.session.close()
+
+    def closeEvent(self, event):
+        self.session.close()
+        super().closeEvent(event)
 
 class AppointmentCalendarWidget(QWidget):
     def __init__(self):
