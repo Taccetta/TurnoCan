@@ -35,6 +35,7 @@ class Appointment(Base):
     repeat_monthly = Column(Boolean)
     confirmed = Column(Boolean, default=False)
     status = Column(String)
+    appoint_comment = Column(String)
     price = Column(Float)
     client_id = Column(Integer, ForeignKey('clients.id'))
 

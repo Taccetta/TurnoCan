@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout)
 from PyQt5.QtCore import Qt, QTime, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
+from sqlalchemy import or_
 from database import Session, Client, Appointment, Breed
 import datetime
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
@@ -33,15 +34,35 @@ class ClientListWidget(QWidget):
         self.client_list.itemDoubleClicked.connect(self.edit_client)
         layout.addWidget(self.client_list)
 
-        # Uncomment for testing
-        self.test_button = QPushButton("Test")
-        self.test_button.clicked.connect(self.create_random_clients)
-        layout.addWidget(self.test_button)
+        # Pagination controls
+        pagination_layout = QHBoxLayout()
+        self.prev_button = QPushButton("Anterior")
+        self.prev_button.clicked.connect(self.previous_page)
+        self.next_button = QPushButton("Siguiente")
+        self.next_button.clicked.connect(self.next_page)
+        self.page_label = QLabel("Página 1 de 1")
+        self.items_per_page_combo = QComboBox()
+        self.items_per_page_combo.addItems(["10", "20", "50", "100"])
+        self.items_per_page_combo.currentTextChanged.connect(self.change_items_per_page)
+        
+        pagination_layout.addWidget(self.prev_button)
+        pagination_layout.addWidget(self.page_label)
+        pagination_layout.addWidget(self.next_button)
+        pagination_layout.addWidget(QLabel("Items por página:"))
+        pagination_layout.addWidget(self.items_per_page_combo)
+        layout.addLayout(pagination_layout)
 
         # Client count label
         self.client_count_label = QLabel()
         self.client_count_label.setStyleSheet("font-weight: bold;")
         layout.addWidget(self.client_count_label)
+
+        # Pagination variables
+        self.current_page = 1
+        self.items_per_page = 10
+        self.total_pages = 1
+        self.total_clients = 0
+        self.current_search = ""
 
         # Load clients when initialized
         self.load_clients()
@@ -52,7 +73,7 @@ class ClientListWidget(QWidget):
     def apply_styles(self):
         """Apply QSS styles to widgets."""
         style = """
-        QLineEdit {
+        QLineEdit, QComboBox {
             padding: 8px;
             border: 1px solid #ced4da;
             border-radius: 5px;
@@ -83,17 +104,28 @@ class ClientListWidget(QWidget):
         self.client_list.clear()
         session = Session()
         query = session.query(Client)
+        
         if search_term:
             query = query.filter(
-                (Client.lastname.contains(search_term)) |
-                (Client.name.contains(search_term)) |
-                (Client.address.contains(search_term)) |
-                (Client.phone.contains(search_term)) |
-                (Client.dog_name.contains(search_term)) |
-                (Client.breed.contains(search_term)) |
-                (Client.comments.contains(search_term))
+                or_(
+                    Client.lastname.ilike(f"%{search_term}%"),
+                    Client.name.ilike(f"%{search_term}%"),
+                    Client.address.ilike(f"%{search_term}%"),
+                    Client.phone.ilike(f"%{search_term}%"),
+                    Client.dog_name.ilike(f"%{search_term}%"),
+                    Client.breed.ilike(f"%{search_term}%"),
+                    Client.comments.ilike(f"%{search_term}%")
+                )
             )
-        clients = query.order_by(Client.lastname.asc(), Client.name.asc()).all()
+        
+        self.total_clients = query.count()
+        self.total_pages = (self.total_clients + self.items_per_page - 1) // self.items_per_page
+        
+        clients = query.order_by(Client.lastname.asc(), Client.name.asc())\
+                       .offset((self.current_page - 1) * self.items_per_page)\
+                       .limit(self.items_per_page)\
+                       .all()
+        
         for client in clients:
             item = QListWidgetItem(
                 f"{client.lastname} {client.name} - {client.dog_name} ({client.breed}) - "
@@ -101,30 +133,46 @@ class ClientListWidget(QWidget):
                 f"Teléfono: {client.phone}")
             item.setData(Qt.UserRole, client.id)
             self.client_list.addItem(item)
+        
         session.close()
-        self.update_client_count(len(self.client_list))
+        self.update_pagination_controls()
+        self.update_client_count()
 
-    def update_client_count(self, count):
-        self.client_count_label.setText(f"Mostrando {count} clientes")
+    def update_pagination_controls(self):
+        self.page_label.setText(f"Página {self.current_page} de {self.total_pages}")
+        self.prev_button.setEnabled(self.current_page > 1)
+        self.next_button.setEnabled(self.current_page < self.total_pages)
+
+    def update_client_count(self):
+        start = (self.current_page - 1) * self.items_per_page + 1
+        end = min(self.current_page * self.items_per_page, self.total_clients)
+        self.client_count_label.setText(f"Mostrando {start}-{end} de {self.total_clients} clientes")
 
     def search_clients(self):
-        search_term = self.search_input.text()
-        self.load_clients(search_term)
+        self.current_search = self.search_input.text()
+        self.current_page = 1
+        self.load_clients(self.current_search)
+
+    def previous_page(self):
+        if self.current_page > 1:
+            self.current_page -= 1
+            self.load_clients(self.current_search)
+
+    def next_page(self):
+        if self.current_page < self.total_pages:
+            self.current_page += 1
+            self.load_clients(self.current_search)
+
+    def change_items_per_page(self, value):
+        self.items_per_page = int(value)
+        self.current_page = 1
+        self.load_clients(self.current_search)
 
     def edit_client(self, item):
         client_id = item.data(Qt.UserRole)
-        session = Session()
-        client = session.query(Client).get(client_id)
-        session.close()  # Cerrar la sesión lo antes posible
-
-        if client:
-            dialog = ClientEditDialog(client_id)
-
-            # Solo si se presionó OK o Eliminar, actualizamos la lista
-            if dialog.exec_() == QDialog.Accepted:
-                self.load_clients()
-        else:
-            print("No se pudo encontrar el cliente para editar.")
+        dialog = ClientEditDialog(client_id)
+        if dialog.exec_() == QDialog.Accepted:
+            self.load_clients(self.current_search)
 
     def create_random_clients(self):
         session = Session()

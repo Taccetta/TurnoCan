@@ -4,6 +4,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout)
 from PyQt5.QtCore import Qt, QTime, QDate
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
+from sqlalchemy import extract
 from database import Session, Client, Appointment, Breed
 import datetime
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
@@ -48,6 +49,7 @@ class AppointmentCalendarWidget(QWidget):
         # Connect calendar signals
         self.calendar.selectionChanged.connect(self.load_appointments)
         self.calendar.currentPageChanged.connect(self.update_calendar)
+        self.calendar.selectionChanged.connect(self.update_calendar)
 
         # Load calendar data
         self.update_calendar()
@@ -185,25 +187,21 @@ class AppointmentCalendarWidget(QWidget):
         year = current_date.year()
         month = current_date.month()
         
-        if year == 0 or month == 0:
-            current_date = QDate.currentDate()
-            year = current_date.year()
-            month = current_date.month()
-            self.calendar.setSelectedDate(current_date)
-
         start_date = QDate(year, month, 1)
         end_date = QDate(year, month, start_date.daysInMonth())
 
         session = Session()
         appointments = session.query(Appointment).filter(
-            Appointment.date.between(start_date.toPyDate(), end_date.toPyDate())
+            extract('month', Appointment.date) == month,
+            extract('year', Appointment.date) == year
         ).all()
         
-        for day in range(1, 32):
+        # Resetear formato de fechas
+        for day in range(1, start_date.daysInMonth() + 1):
             date = QDate(year, month, day)
-            if date.isValid():
-                self.calendar.setDateTextFormat(date, QTextCharFormat())
+            self.calendar.setDateTextFormat(date, QTextCharFormat())
         
+        # Establecer formato para fechas con citas
         for appointment in appointments:
             date = QDate(appointment.date.year, appointment.date.month, appointment.date.day)
             fmt = self.calendar.dateTextFormat(date)
@@ -213,6 +211,14 @@ class AppointmentCalendarWidget(QWidget):
         session.close()
 
     def create_appointment(self):
+        session = Session()
+        clients = session.query(Client).all()
+        session.close()
+        
+        if not clients:
+            QMessageBox.warning(self, "Error", "No existen clientes. Cree un cliente primero para guardar un turno.")
+            return
+        
         dialog = AppointmentDialog(self.calendar.selectedDate().toPyDate())
         if dialog.exec_():
             self.load_appointments()
