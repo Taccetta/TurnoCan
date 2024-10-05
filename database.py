@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, Integer, String, Date, Time, Boolean, ForeignKey, Text
+from sqlalchemy import Float, create_engine, Column, Integer, String, Date, Time, Boolean, ForeignKey, Text
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, relationship
 
@@ -33,6 +33,9 @@ class Appointment(Base):
     time = Column(Time)
     repeat_weekly = Column(Boolean)
     repeat_monthly = Column(Boolean)
+    confirmed = Column(Boolean, default=False)
+    status = Column(String)
+    price = Column(Float)
     client_id = Column(Integer, ForeignKey('clients.id'))
 
     client = relationship("Client", back_populates="appointments")

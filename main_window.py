@@ -1,7 +1,9 @@
 from PyQt5.QtWidgets import QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget
 from PyQt5.QtCore import Qt
-from gui import CreateClientWidget, ClientListWidget, AppointmentCalendarWidget
 from backup import BackupWidget
+from create_client import CreateClientWidget
+from client_list import ClientListWidget 
+from appoint_calendar import AppointmentCalendarWidget
 
 class MainWindow(QMainWindow):
     def __init__(self):
