@@ -1,7 +1,9 @@
 import os
 import shutil
+import time
 from PyQt5.QtWidgets import QWidget, QVBoxLayout, QPushButton, QFileDialog, QMessageBox, QSizePolicy, QGridLayout
 from database import db_path
+from database import init_db
 
 
 def realizar_backup(backup_path):
@@ -26,6 +28,50 @@ def restaurar_backup(backup_path):
         print(f"Error al restaurar el backup: {str(e)}")
         return False
 
+def create_auto_backup():
+    time.sleep(1)  # Wait for 1 second
+    auto_backup_path = os.path.join(os.path.dirname(db_path), "auto_backup.db")
+    if realizar_backup(auto_backup_path):
+        print("Auto-backup created successfully")
+    else:
+        print("Error creating auto-backup")
+
+def restore_from_auto_backup():
+    auto_backup_path = os.path.join(os.path.dirname(db_path), "auto_backup.db")
+    
+    if not os.path.exists(auto_backup_path):
+        return False, None
+    
+    try:
+        # Eliminar la base de datos actual si existe
+        if os.path.exists(db_path):
+            os.remove(db_path)
+        
+        # Copiar el auto-backup y renombrarlo
+        shutil.copy2(auto_backup_path, db_path)
+        
+        # Obtener la fecha y hora de creación del auto-backup
+        timestamp = time.ctime(os.path.getctime(auto_backup_path))
+        
+        # Intentar inicializar la base de datos restaurada
+        init_db()
+        
+        return True, timestamp
+    except Exception as e:
+        print(f"Error durante la restauración: {e}")
+        return False, None
+
+def try_restore_database(max_attempts=3, delay=1):
+    for attempt in range(max_attempts):
+        try:
+            success, timestamp = restore_from_auto_backup()
+            if success:
+                return True, timestamp
+        except Exception as e:
+            print(f"Intento {attempt + 1} fallido: {e}")
+            time.sleep(delay)
+    return False, None
+
 class BackupWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -38,7 +84,7 @@ class BackupWidget(QWidget):
         layout.setColumnStretch(2, 1)  
 
         # Botón Realizar Backup
-        backup_btn = QPushButton("Realizar Backup")
+        backup_btn = QPushButton("Guardar Backup")
         backup_btn.clicked.connect(self.do_backup)
         backup_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         backup_btn.setFixedHeight(self.height() // 8)
@@ -46,7 +92,7 @@ class BackupWidget(QWidget):
         layout.addWidget(backup_btn, 0, 1)
 
         # Botón Restaurar Backup
-        restore_btn = QPushButton("Restaurar Backup")
+        restore_btn = QPushButton("Cargar Backup")
         restore_btn.clicked.connect(self.do_restore)
         restore_btn.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         restore_btn.setFixedHeight(self.height() // 8)
@@ -80,14 +126,14 @@ class BackupWidget(QWidget):
         }
 
         QPushButton#restore_button {
-            background-color: #007bff; /* Azul */
-            border-color: #007bff;
+            background-color: #FF0000; /* Rojo */
+            border-color: #FF0000;
         }
         QPushButton#restore_button:hover {
-            background-color: #0056b3; /* Hover Azul */
+            background-color: #8B0000; /* Hover rojo */
         }
         QPushButton#restore_button:pressed {
-            background-color: #004085; /* Pressed Azul */
+            background-color: #300101; /* Pressed rojo */
         }
         QDialogButtonBox QPushButton {
         background-color: #007bff; /* Color Azul para OK */

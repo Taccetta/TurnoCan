@@ -64,6 +64,10 @@ class ClientListWidget(QWidget):
         self.total_clients = 0
         self.current_search = ""
 
+        self.test_button = QPushButton("Test")
+        self.test_button.clicked.connect(self.create_random_clients)
+        layout.addWidget(self.test_button)
+
         # Load clients when initialized
         self.load_clients()
 

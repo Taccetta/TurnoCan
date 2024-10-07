@@ -70,3 +70,11 @@ def init_db():
             session.add(Breed(name=breed_name))
     session.commit()
     session.close()
+
+def close_db_connections():
+    # Cierra la sesión global si existe
+    if hasattr(Session, 'session'):
+        Session.session.close()
+    
+    # Cierra el motor de la base de datos
+    engine.dispose()
