@@ -11,6 +11,7 @@ from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 import string, random
 from PyQt5.QtGui import QDoubleValidator
 from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import QFont
 
 
 class AppointmentCalendarWidget(QWidget):
@@ -23,9 +24,8 @@ class AppointmentCalendarWidget(QWidget):
         self.calendar = QCalendarWidget()
         layout.addWidget(self.calendar, 0, 0)
 
-        # Appointment list (hidden by default)
+        # Appointment list
         self.appointment_list = QListWidget()
-        self.appointment_list.setVisible(False)
 
         # Contador de turnos
         self.appointment_count_layout = QHBoxLayout()
@@ -49,9 +49,9 @@ class AppointmentCalendarWidget(QWidget):
         create_appointment_btn.clicked.connect(self.create_appointment)
         buttons_layout.addWidget(create_appointment_btn)
 
-        self.toggle_list_btn = QPushButton("⮘ Mostrar Lista")
-        self.toggle_list_btn.clicked.connect(self.toggle_appointment_list)
-        buttons_layout.addWidget(self.toggle_list_btn)
+        self.toggle_calendar_btn = QPushButton("Ocultar Calendario")
+        self.toggle_calendar_btn.clicked.connect(self.toggle_calendar)
+        buttons_layout.addWidget(self.toggle_calendar_btn)
 
         repeat_weekly_btn = QPushButton("Repetir Turnos Semanalmente")
         repeat_weekly_btn.clicked.connect(self.repeat_weekly_appointments)
@@ -187,6 +187,22 @@ class AppointmentCalendarWidget(QWidget):
         }
         """
         self.setStyleSheet(style)
+
+        # Poner el contador de turnos en negrita
+        bold_font = QFont()
+        bold_font.setBold(True)
+        self.appointment_count_label.setFont(bold_font)
+        self.appointment_count_number.setFont(bold_font)
+        self.appointment_count_label.setStyleSheet("font-size: 14px;")
+        self.appointment_count_number.setStyleSheet("font-size: 14px; color: #007bff;")
+
+    def toggle_calendar(self):
+        if self.calendar.isVisible():
+            self.calendar.hide()
+            self.toggle_calendar_btn.setText("Mostrar Calendario")
+        else:
+            self.calendar.show()
+            self.toggle_calendar_btn.setText("Ocultar Calendario")
 
     def load_appointments(self):
         self.appointment_list.clear()
@@ -489,7 +505,7 @@ class AppointmentDialog(QDialog):
         }
         QLineEdit, QComboBox, QTimeEdit {
             padding: 10px;
-            border: 1px solid #ced4da;
+            border: 1px solid #007bff;
             border-radius: 5px;
             background-color: #f8f9fa;
             font-size: 14px;

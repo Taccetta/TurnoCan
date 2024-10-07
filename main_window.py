@@ -4,6 +4,7 @@ from backup import BackupWidget
 from create_client import CreateClientWidget
 from client_list import ClientListWidget 
 from appoint_calendar import AppointmentCalendarWidget
+from appointment_search import AppointmentSearchWidget  # Importar el nuevo widget
 
 class MainWindow(QMainWindow):
     def __init__(self):
@@ -22,6 +23,7 @@ class MainWindow(QMainWindow):
         create_client_btn = QPushButton("Crear Cliente")
         clients_btn = QPushButton("Clientes")
         appointments_btn = QPushButton("Calendario de Turnos")
+        appointment_search_btn = QPushButton("Buscar Turnos")  # Nuevo botón
         backup_btn = QPushButton("Backup")
 
         # Apply QSS (styles)
@@ -44,11 +46,13 @@ class MainWindow(QMainWindow):
         create_client_btn.setStyleSheet(button_style)
         clients_btn.setStyleSheet(button_style)
         appointments_btn.setStyleSheet(button_style)
+        appointment_search_btn.setStyleSheet(button_style)  # Aplicar estilo al nuevo botón
         backup_btn.setStyleSheet(button_style)
 
         header_layout.addWidget(create_client_btn)
         header_layout.addWidget(clients_btn)
         header_layout.addWidget(appointments_btn)
+        header_layout.addWidget(appointment_search_btn)  # Agregar el nuevo botón
         header_layout.addWidget(backup_btn)
 
         main_layout.addLayout(header_layout)
@@ -58,11 +62,13 @@ class MainWindow(QMainWindow):
         self.create_client_widget = CreateClientWidget()
         self.client_list_widget = ClientListWidget()
         self.appointment_calendar_widget = AppointmentCalendarWidget()
+        self.appointment_search_widget = AppointmentSearchWidget()  # Nuevo widget
         self.backup_widget = BackupWidget()
 
         self.stacked_widget.addWidget(self.create_client_widget)
         self.stacked_widget.addWidget(self.client_list_widget)
         self.stacked_widget.addWidget(self.appointment_calendar_widget)
+        self.stacked_widget.addWidget(self.appointment_search_widget)  # Agregar el nuevo widget
         self.stacked_widget.addWidget(self.backup_widget)
 
         main_layout.addWidget(self.stacked_widget)
@@ -71,4 +77,5 @@ class MainWindow(QMainWindow):
         create_client_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.create_client_widget))
         clients_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.client_list_widget))
         appointments_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.appointment_calendar_widget))
+        appointment_search_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.appointment_search_widget))  # Conectar el nuevo botón
         backup_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.backup_widget))
