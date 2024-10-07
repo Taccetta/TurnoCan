@@ -1,17 +1,19 @@
-from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, 
-                             QCalendarWidget, QCheckBox, QMessageBox, QComboBox, QSlider, 
-                             QTimeEdit, QListWidget, QDialog, QDialogButtonBox, QTextEdit,
-                             QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout)
-from PyQt5.QtCore import Qt, QTime, QDate
-from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
+import datetime
+import random
+import string
+
+from PyQt5 import QtWidgets, QtCore, QtGui, QtPrintSupport
 from sqlalchemy import extract
 from database import Session, Client, Appointment, Breed
-import datetime
+
+from PyQt5.QtWidgets import (
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QCalendarWidget,
+    QCheckBox, QComboBox, QSlider, QTimeEdit, QListWidget, QDialog, QDialogButtonBox,
+    QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox
+)
+from PyQt5.QtCore import Qt, QTime, QDate
+from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
-import string, random
-from PyQt5.QtGui import QDoubleValidator
-from PyQt5.QtWidgets import QMessageBox
-from PyQt5.QtGui import QFont
 
 
 class AppointmentCalendarWidget(QWidget):
@@ -279,31 +281,36 @@ class AppointmentCalendarWidget(QWidget):
 
     def update_calendar(self):
         current_date = self.calendar.selectedDate()
-        year = current_date.year()
-        month = current_date.month()
+        year, month = current_date.year(), current_date.month()
         
         start_date = QDate(year, month, 1)
-        end_date = QDate(year, month, start_date.daysInMonth())
+        days_in_month = start_date.daysInMonth()
 
-        session = Session()
-        appointments = session.query(Appointment).filter(
-            extract('month', Appointment.date) == month,
-            extract('year', Appointment.date) == year
-        ).all()
-        
         # Resetear formato de fechas
-        for day in range(1, start_date.daysInMonth() + 1):
+        for day in range(1, days_in_month + 1):
             date = QDate(year, month, day)
             self.calendar.setDateTextFormat(date, QTextCharFormat())
-        
-        # Establecer formato para fechas con citas
-        for appointment in appointments:
-            date = QDate(appointment.date.year, appointment.date.month, appointment.date.day)
-            fmt = self.calendar.dateTextFormat(date)
-            fmt.setBackground(QColor(255, 200, 200))
-            self.calendar.setDateTextFormat(date, fmt)
-        
-        session.close()
+
+        # Obtener citas y establecer formato
+        session = Session()
+        try:
+            appointments = session.query(Appointment).filter(
+                extract('month', Appointment.date) == month,
+                extract('year', Appointment.date) == year
+            ).all()
+
+            for appointment in appointments:
+                date = QDate(appointment.date.year, appointment.date.month, appointment.date.day)
+                fmt = self.calendar.dateTextFormat(date)
+                fmt.setBackground(QColor(255, 200, 200))
+                self.calendar.setDateTextFormat(date, fmt)
+
+            session.commit()
+        except Exception as e:
+            session.rollback()
+            print(f"Error al actualizar el calendario: {str(e)}")
+        finally:
+            session.close()
 
     def create_appointment(self):
         session = Session()
@@ -402,7 +409,7 @@ class PrintAppointmentsDialog(QDialog):
 
     def load_appointments(self):
         session = Session()
-        appointments = session.query(Appointment).filter(Appointment.date == self.date).all()
+        appointments = session.query(Appointment).filter(Appointment.date == self.date).order_by(Appointment.time).all()
         text = ""
         for appointment in appointments:
             text += f"{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')} - {appointment.client.lastname} {appointment.client.name} - "
@@ -422,9 +429,6 @@ class PrintAppointmentsDialog(QDialog):
         dialog = QPrintDialog()
         if dialog.exec_() == QDialog.Accepted:
             self.preview.print_(printer)
-
-
-
 
 class AppointmentDialog(QDialog):
     def __init__(self, date, appointment_id=None):

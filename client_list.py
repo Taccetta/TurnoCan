@@ -66,6 +66,11 @@ class ClientListWidget(QWidget):
         self.search_timer.setSingleShot(True)
         self.search_timer.timeout.connect(self.search_clients)
 
+        # Uncomment for testing
+        self.test_button = QPushButton("Test")
+        self.test_button.clicked.connect(self.create_random_clients)
+        layout.addWidget(self.test_button)
+
         # Load clients when initialized
         self.load_clients()
 
@@ -142,7 +147,8 @@ class ClientListWidget(QWidget):
             item = QListWidgetItem(
                 f"{client.lastname} {client.name} - {client.dog_name} ({client.breed}) - "
                 f"Dirección: {client.address} - "
-                f"Teléfono: {client.phone}")
+                f"Teléfono: {client.phone} - "
+                f"Comentarios: {client.comments}")
             item.setData(Qt.UserRole, client.id)
             self.client_list.addItem(item)
         
