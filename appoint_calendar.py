@@ -217,34 +217,49 @@ class AppointmentCalendarWidget(QWidget):
         
         for appointment in appointments:
             item_widget = QWidget()
-            item_layout = QVBoxLayout(item_widget)
+            item_layout = QHBoxLayout(item_widget)
+            
+            # Botones de ajuste de tiempo
+            time_adjust_layout = QVBoxLayout()
+            up_button = QPushButton("▲")
+            up_button.setFixedSize(20, 20)
+            up_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, 30))
+            down_button = QPushButton("▼")
+            down_button.setFixedSize(20, 20)
+            down_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, -30))
+            time_adjust_layout.addWidget(up_button)
+            time_adjust_layout.addWidget(down_button)
+            item_layout.addLayout(time_adjust_layout)
+            
+            # Contenido principal del turno
+            content_layout = QVBoxLayout()
             
             # Hora y fecha al principio
             time_date_label = QLabel(f"<b>{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b>")
             time_date_label.setStyleSheet("font-size: 14px; color: #333;")
-            item_layout.addWidget(time_date_label)
+            content_layout.addWidget(time_date_label)
             
             # Información del cliente y la mascota
             client_info = QLabel(f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
                                  f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
             client_info.setStyleSheet("font-size: 13px;")
-            item_layout.addWidget(client_info)
+            content_layout.addWidget(client_info)
             
             # Dirección y teléfono
             contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
             contact_info.setStyleSheet("font-size: 12px; color: #555;")
-            item_layout.addWidget(contact_info)
+            content_layout.addWidget(contact_info)
             
             # Estado, precio y notas
             details = QLabel(f"Estado: {appointment.status or 'No especificado'} - "
                              f"Precio: ${appointment.price or 'No especificado'}")
             details.setStyleSheet("font-size: 12px;")
-            item_layout.addWidget(details)
+            content_layout.addWidget(details)
             
             if appointment.appoint_comment:
                 notes = QLabel(f"Notas: {appointment.appoint_comment}")
                 notes.setStyleSheet("font-size: 12px; font-style: italic; color: #666;")
-                item_layout.addWidget(notes)
+                content_layout.addWidget(notes)
             
             # Botones y checkbox
             buttons_layout = QHBoxLayout()
@@ -262,7 +277,9 @@ class AppointmentCalendarWidget(QWidget):
             delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
             buttons_layout.addWidget(delete_button)
             
-            item_layout.addLayout(buttons_layout)
+            content_layout.addLayout(buttons_layout)
+            
+            item_layout.addLayout(content_layout)
             
             list_item = QListWidgetItem(self.appointment_list)
             list_item.setSizeHint(item_widget.sizeHint())
@@ -270,6 +287,17 @@ class AppointmentCalendarWidget(QWidget):
             self.appointment_list.setItemWidget(list_item, item_widget)
         
         session.close()
+
+    def adjust_time(self, appointment_id, minutes):
+        session = Session()
+        appointment = session.query(Appointment).get(appointment_id)
+        new_time = (datetime.datetime.combine(datetime.date.today(), appointment.time) + 
+                    datetime.timedelta(minutes=minutes)).time()
+        appointment.time = new_time
+        session.commit()
+        session.close()
+        self.load_appointments()
+        self.update_calendar()
 
     def toggle_confirmation(self, appointment_id, state):
         session = Session()

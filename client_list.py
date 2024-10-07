@@ -19,11 +19,14 @@ class ClientListWidget(QWidget):
         # Search input
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Buscar clientes...")
+        self.search_button = QPushButton("Buscar")
+        self.search_button.clicked.connect(self.search_clients)
         self.search_input.textChanged.connect(self.on_search_text_changed)
 
         # Layout for search bar
         search_layout = QHBoxLayout()
         search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_button) 
         layout.addLayout(search_layout)
 
         # Client list

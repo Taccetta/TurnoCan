@@ -16,11 +16,14 @@ class AppointmentSearchWidget(QWidget):
         # Search input
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Buscar turnos...")
+        self.search_button = QPushButton("Buscar")
+        self.search_button.clicked.connect(self.search_appointments)
         self.search_input.textChanged.connect(self.on_search_text_changed)
 
         # Layout for search bar
         search_layout = QHBoxLayout()
         search_layout.addWidget(self.search_input)
+        search_layout.addWidget(self.search_button)  # Agregar esta línea
         layout.addLayout(search_layout)
 
         # Appointment list
