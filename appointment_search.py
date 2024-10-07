@@ -203,7 +203,7 @@ class AppointmentViewDialog(QDialog):
         layout.addWidget(QLabel(f"${appointment.price}" if appointment.price else "No especificado"), 5, 1)
         layout.addWidget(QLabel("Confirmado:"), 6, 0)
         layout.addWidget(QLabel("Sí" if appointment.confirmed else "No"), 6, 1)
-        layout.addWidget(QLabel("Comentarios:"), 7, 0)
+        layout.addWidget(QLabel("Notas:"), 7, 0)
         comments = QTextEdit()
         comments.setPlainText(appointment.appoint_comment)
         comments.setReadOnly(True)

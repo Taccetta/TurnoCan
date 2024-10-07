@@ -147,11 +147,12 @@ class ClientListWidget(QWidget):
                        .all()
         
         for client in clients:
+            
             item = QListWidgetItem(
                 f"{client.lastname} {client.name} - {client.dog_name} ({client.breed}) - "
                 f"Dirección: {client.address} - "
                 f"Teléfono: {client.phone} - "
-                f"Comentarios: {client.comments}")
+                f"Comentarios: {client.comments[:20].replace('\n', ' ') + '...' if len(client.comments) > 20 else client.comments.replace('\n', ' ')}")
             item.setData(Qt.UserRole, client.id)
             self.client_list.addItem(item)
         

@@ -250,6 +250,13 @@ class AppointmentCalendarWidget(QWidget):
             contact_info.setStyleSheet("font-size: 12px; color: #555;")
             content_layout.addWidget(contact_info)
             
+            # Comentarios del cliente
+            if appointment.client.comments:
+                client_comments = QLabel(f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}")
+                client_comments.setStyleSheet("font-size: 12px; font-style: italic; color: #666;")
+                client_comments.setWordWrap(True)
+                content_layout.addWidget(client_comments)
+            
             # Estado, precio y notas
             details = QLabel(f"Estado: {appointment.status or 'No especificado'} - "
                              f"Precio: ${appointment.price or 'No especificado'}")
@@ -443,6 +450,8 @@ class PrintAppointmentsDialog(QDialog):
             text += f"{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')} - {appointment.client.lastname} {appointment.client.name} - "
             text += f"Perro: {appointment.client.dog_name} - Raza: {appointment.client.breed} - "
             text += f"Dirección: {appointment.client.address} - Teléfono: {appointment.client.phone}\n"
+            if appointment.client.comments:
+                text += f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}\n"
             text += f"Estado: {appointment.status or 'No especificado'} - "
             text += f"Precio: ${appointment.price or 'No especificado'}\n"
             text += f"Notas: {appointment.appoint_comment or 'Sin notas'}\n"
