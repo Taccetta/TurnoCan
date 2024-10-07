@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QCalendarWidget, QCheckBox, QMessageBox, QComboBox, QSlider, 
                              QTimeEdit, QListWidget, QDialog, QDialogButtonBox, QTextEdit,
                              QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout)
-from PyQt5.QtCore import Qt, QTime, QDate
+from PyQt5.QtCore import Qt, QTime, QDate, QTimer
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
 from sqlalchemy import or_
 from database import Session, Client, Appointment, Breed
@@ -16,17 +16,14 @@ class ClientListWidget(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # Search input and button
+        # Search input
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Buscar clientes...")
-        self.search_button = QPushButton("Buscar")
-        self.search_button.clicked.connect(self.search_clients)
-        self.search_input.returnPressed.connect(self.search_clients)
+        self.search_input.textChanged.connect(self.on_search_text_changed)
 
         # Layout for search bar
         search_layout = QHBoxLayout()
         search_layout.addWidget(self.search_input)
-        search_layout.addWidget(self.search_button)
         layout.addLayout(search_layout)
 
         # Client list
@@ -42,7 +39,7 @@ class ClientListWidget(QWidget):
         self.next_button.clicked.connect(self.next_page)
         self.page_label = QLabel("Página 1 de 1")
         self.items_per_page_combo = QComboBox()
-        self.items_per_page_combo.addItems(["10", "20", "50", "100"])
+        self.items_per_page_combo.addItems(["50", "100", "200", "1000"])
         self.items_per_page_combo.currentTextChanged.connect(self.change_items_per_page)
         
         pagination_layout.addWidget(self.prev_button)
@@ -59,20 +56,31 @@ class ClientListWidget(QWidget):
 
         # Pagination variables
         self.current_page = 1
-        self.items_per_page = 10
+        self.items_per_page = 50  # Cambiado a 50 como valor predeterminado
         self.total_pages = 1
         self.total_clients = 0
         self.current_search = ""
 
-        self.test_button = QPushButton("Test")
-        self.test_button.clicked.connect(self.create_random_clients)
-        layout.addWidget(self.test_button)
+        # Timer para retrasar la búsqueda
+        self.search_timer = QTimer()
+        self.search_timer.setSingleShot(True)
+        self.search_timer.timeout.connect(self.search_clients)
 
         # Load clients when initialized
         self.load_clients()
 
         # Apply styles
         self.apply_styles()
+
+    def on_search_text_changed(self):
+        # Reiniciar el temporizador cada vez que el texto cambie
+        self.search_timer.stop()
+        self.search_timer.start(300)  # Esperar 300ms antes de realizar la búsqueda
+
+    def search_clients(self):
+        self.current_search = self.search_input.text()
+        self.current_page = 1
+        self.load_clients(self.current_search)
 
     def apply_styles(self):
         """Apply QSS styles to widgets."""
@@ -151,11 +159,6 @@ class ClientListWidget(QWidget):
         start = (self.current_page - 1) * self.items_per_page + 1
         end = min(self.current_page * self.items_per_page, self.total_clients)
         self.client_count_label.setText(f"Mostrando {start}-{end} de {self.total_clients} clientes")
-
-    def search_clients(self):
-        self.current_search = self.search_input.text()
-        self.current_page = 1
-        self.load_clients(self.current_search)
 
     def previous_page(self):
         if self.current_page > 1:

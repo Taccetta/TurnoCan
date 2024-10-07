@@ -6,7 +6,6 @@ from database import init_db, close_db_connections
 from backup import create_auto_backup, restore_from_auto_backup, try_restore_database
 import os
 
-
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     

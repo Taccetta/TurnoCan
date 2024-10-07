@@ -26,21 +26,7 @@ class AppointmentCalendarWidget(QWidget):
         # Appointment list (hidden by default)
         self.appointment_list = QListWidget()
         self.appointment_list.setVisible(False)
-
-        # Contador de turnos
-        self.appointment_count_layout = QHBoxLayout()
-        self.appointment_count_label = QLabel("Cantidad Turnos:")
-        self.appointment_count_number = QLabel("0")
-        self.appointment_count_layout.addWidget(self.appointment_count_label)
-        self.appointment_count_layout.addWidget(self.appointment_count_number)
-        self.appointment_count_layout.addStretch()
-
-        # Agregar el contador y la lista al layout principal
-        appointment_widget = QWidget()
-        appointment_layout = QVBoxLayout(appointment_widget)
-        appointment_layout.addLayout(self.appointment_count_layout)
-        appointment_layout.addWidget(self.appointment_list)
-        layout.addWidget(appointment_widget, 0, 1)
+        layout.addWidget(self.appointment_list, 0, 1)
 
         # Buttons layout
         buttons_layout = QHBoxLayout()
@@ -88,31 +74,10 @@ class AppointmentCalendarWidget(QWidget):
             padding: 5px;
             background-color: white;
         }
-        QListWidget::item:nth-child(even) {
-            background-color: #f8f9fa;
-        }
-        QListWidget::item:nth-child(odd) {
-            background-color: #e9ecef;
-        }
-        QCheckBox {
-            spacing: 5px;
-        }
-        QCheckBox::indicator {
-            width: 18px;
-            height: 18px;
-            border: 2px solid #ced4da;
-            border-radius: 3px;
-            background-color: white;
-        }
-        QCheckBox::indicator:checked {
-            background-color: #28a745;
-            border-color: #28a745;
-            image: url(checkmark.png);
-        }
         QPushButton {
-            padding: 2px;
-            border: 2px solid #007bff;
-            border-radius: 5px;
+            padding: 5px;
+            border: 1px solid #007bff;
+            border-radius: 3px;
             background-color: #007bff;
             color: white;
         }
@@ -122,71 +87,35 @@ class AppointmentCalendarWidget(QWidget):
         QPushButton:pressed {
             background-color: #004085;
         }
-        QPushButton#create_appointment_btn {
-            background-color: #28a745; /* Green */
-            border-color: #28a745;
-        }
-        QPushButton#create_appointment_btn:hover {
-            background-color: #218838;
-        }
-        QPushButton#create_appointment_btn:pressed {
-            background-color: #1e7e34;
-        }
-        QPushButton#toggle_list_btn {
-            background-color: #ffc107; /* Yellow */
-            border-color: #ffc107;
-        }
-        QPushButton#toggle_list_btn:hover {
-            background-color: #e0a800;
-        }
-        QPushButton#toggle_list_btn:pressed {
-            background-color: #d39e00;
-        }
-        QPushButton#repeat_weekly_btn {
-            background-color: #17a2b8; /* Teal */
-            border-color: #17a2b8;
-        }
-        QPushButton#repeat_weekly_btn:hover {
-            background-color: #138496;
-        }
-        QPushButton#repeat_weekly_btn:pressed {
-            background-color: #117a8b;
-        }
-        QPushButton#print_btn {
-            background-color: #6c757d; /* Gray */
-            border-color: #6c757d;
-        }
-        QPushButton#print_btn:hover {
-            background-color: #5a6268;
-        }
-        QPushButton#print_btn:pressed {
-            background-color: #545b62;
-        }
-
-        /* boton Borrar */
         QPushButton#delete_button {
-            background-color: #dc3545; /* Rojo */
+            background-color: #dc3545;
             border-color: #dc3545;
         }
         QPushButton#delete_button:hover {
-            background-color: #c82333;
+            background-color: #850d00;
         }
         QPushButton#delete_button:pressed {
             background-color: #bd2130;
         }
-
-        /* Agregar estilos para el contador de turnos */
-        QLabel#appointment_count_label {
-            font-weight: bold;
-            font-size: 14px;
+        QCheckBox {
+            spacing: 5px;
         }
-        QLabel#appointment_count_number {
-            font-weight: bold;
-            font-size: 14px;
-            color: #007bff;
+        QCheckBox::indicator {
+            width: 18px;
+            height: 18px;
+        }
+        QCheckBox::indicator:unchecked {
+            border: 2px solid #ced4da;
+            background-color: white;
+        }
+        QCheckBox::indicator:checked {
+            border: 2px solid #28a745;
+            background-color: #28a745;
+            image: url(checkmark.png);
         }
         """
         self.setStyleSheet(style)
+
 
     def load_appointments(self):
         self.appointment_list.clear()
@@ -194,57 +123,68 @@ class AppointmentCalendarWidget(QWidget):
         session = Session()
         appointments = session.query(Appointment).filter(Appointment.date == selected_date).order_by(Appointment.time).all()
         
-        # Actualizar el contador de turnos
-        self.appointment_count_number.setText(str(len(appointments)))
-        
-        for appointment in appointments:
+        for index, appointment in enumerate(appointments):
             item_widget = QWidget()
-            item_layout = QVBoxLayout(item_widget)
+            item_layout = QHBoxLayout(item_widget)
+            
+            # Alternar colores de fondo
+            if index % 2 == 0:
+                item_widget.setStyleSheet("background-color: #f0f0f0;")
+            else:
+                item_widget.setStyleSheet("background-color: #e0e0e0;")
+            
+            info_layout = QVBoxLayout()
             
             # Hora y fecha al principio
             time_date_label = QLabel(f"<b>{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b>")
             time_date_label.setStyleSheet("font-size: 14px; color: #333;")
-            item_layout.addWidget(time_date_label)
+            info_layout.addWidget(time_date_label)
             
             # Información del cliente y la mascota
             client_info = QLabel(f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
                                  f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
             client_info.setStyleSheet("font-size: 13px;")
-            item_layout.addWidget(client_info)
+            info_layout.addWidget(client_info)
             
             # Dirección y teléfono
             contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
             contact_info.setStyleSheet("font-size: 12px; color: #555;")
-            item_layout.addWidget(contact_info)
+            info_layout.addWidget(contact_info)
             
             # Estado, precio y notas
             details = QLabel(f"Estado: {appointment.status or 'No especificado'} - "
                              f"Precio: ${appointment.price or 'No especificado'}")
             details.setStyleSheet("font-size: 12px;")
-            item_layout.addWidget(details)
+            info_layout.addWidget(details)
             
             if appointment.appoint_comment:
                 notes = QLabel(f"Notas: {appointment.appoint_comment}")
                 notes.setStyleSheet("font-size: 12px; font-style: italic; color: #666;")
-                item_layout.addWidget(notes)
+                info_layout.addWidget(notes)
             
-            # Botones y checkbox
-            buttons_layout = QHBoxLayout()
+            for label in info_layout.children():
+                if isinstance(label, QLabel):
+                    label.setWordWrap(True)
+            
+            buttons_layout = QVBoxLayout()
             confirmed_checkbox = QCheckBox("Confirmado")
             confirmed_checkbox.setChecked(appointment.confirmed)
             confirmed_checkbox.stateChanged.connect(lambda state, a=appointment.id: self.toggle_confirmation(a, state))
             buttons_layout.addWidget(confirmed_checkbox)
             
             edit_button = QPushButton("Editar")
+            edit_button.setFixedSize(60, 30)
             edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
             buttons_layout.addWidget(edit_button)
             
             delete_button = QPushButton("Borrar")
+            delete_button.setFixedSize(60, 30)
             delete_button.setObjectName("delete_button") 
             delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
             buttons_layout.addWidget(delete_button)
             
-            item_layout.addLayout(buttons_layout)
+            item_layout.addLayout(info_layout, 4)
+            item_layout.addLayout(buttons_layout, 1)
             
             list_item = QListWidgetItem(self.appointment_list)
             list_item.setSizeHint(item_widget.sizeHint())
@@ -389,7 +329,7 @@ class PrintAppointmentsDialog(QDialog):
         appointments = session.query(Appointment).filter(Appointment.date == self.date).all()
         text = ""
         for appointment in appointments:
-            text += f"{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')} - {appointment.client.lastname} {appointment.client.name} - "
+            text += f"{appointment.time.strftime('%H:%M')} - {appointment.client.lastname} {appointment.client.name} - "
             text += f"Perro: {appointment.client.dog_name} - Raza: {appointment.client.breed} - "
             text += f"Dirección: {appointment.client.address} - Teléfono: {appointment.client.phone}\n"
             text += f"Estado: {appointment.status or 'No especificado'} - "
