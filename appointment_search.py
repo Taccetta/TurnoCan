@@ -135,10 +135,17 @@ class AppointmentSearchWidget(QWidget):
                             .all()
         
         for appointment in appointments:
+            comment = appointment.appoint_comment or ""  # Si es None, usamos una cadena vacía
+            formatted_comment = (comment[:20].replace('\n', ' ') + '...' if len(comment) > 20 
+                                 else comment.replace('\n', ' '))
+            
             item = QListWidgetItem(
                 f"{appointment.date.strftime('%d/%m/%Y')} {appointment.time.strftime('%H:%M')} - "
                 f"{appointment.client.lastname} {appointment.client.name} - "
-                f"{appointment.client.dog_name} - {appointment.status}"
+                f"{appointment.client.dog_name} - {appointment.status} - "
+                f"{appointment.price} - "
+                f"{'Confirmado' if appointment.confirmed else 'No confirmado'} - "
+                f"{formatted_comment}"
             )
             item.setData(Qt.UserRole, appointment.id)
             self.appointment_list.addItem(item)

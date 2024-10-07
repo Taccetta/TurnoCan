@@ -485,7 +485,6 @@ class AppointmentDialog(QDialog):
 
         # Client combo box
         self.client_combo = QComboBox()
-        self.load_clients()
         layout.addWidget(self.client_combo)
         
         # Time edit
@@ -504,6 +503,12 @@ class AppointmentDialog(QDialog):
         self.confirmed_checkbox = QCheckBox("Confirmado")
         layout.addWidget(self.confirmed_checkbox)
 
+                # Service combo box (antes llamado Status)
+        self.service_combo = QComboBox()
+        self.service_combo.addItems(["Baño", "Corte", "Baño y corte"])
+        layout.addWidget(QLabel("Servicio:"))
+        layout.addWidget(self.service_combo)
+
         # Price input con validador
         self.price_input = QLineEdit()
         self.price_input.setPlaceholderText("Precio")
@@ -513,16 +518,28 @@ class AppointmentDialog(QDialog):
         layout.addWidget(QLabel("Precio:"))
         layout.addWidget(self.price_input)
 
-        # Status combo box
-        self.status_combo = QComboBox()
-        self.status_combo.addItems(["Baño", "Corte", "Baño y corte"])
-        layout.addWidget(QLabel("Estado:"))
-        layout.addWidget(self.status_combo)
+
+
+        # Client comments display
+        self.client_comments = QTextEdit()
+        self.client_comments.setReadOnly(True)
+        self.client_comments.setPlaceholderText("Comentarios del cliente")
+        self.client_comments.setStyleSheet("""
+            QTextEdit {
+                background-color: #f0f0f0;
+                border: 1px solid #d0d0d0;
+                border-radius: 5px;
+                padding: 5px;
+                color: #333333;
+            }
+        """)
+        layout.addWidget(QLabel("Comentarios del cliente:"))
+        layout.addWidget(self.client_comments)
 
         # Notes input
         self.notes_input = QTextEdit()
-        self.notes_input.setPlaceholderText("Notas")
-        layout.addWidget(QLabel("Notas:"))
+        self.notes_input.setPlaceholderText("Notas del turno")
+        layout.addWidget(QLabel("Notas del turno:"))
         layout.addWidget(self.notes_input)
 
         # Button box
@@ -533,6 +550,9 @@ class AppointmentDialog(QDialog):
 
         if appointment_id:
             self.load_appointment(appointment_id)
+
+        # Conectar el cambio de cliente seleccionado a la actualización de comentarios
+        self.client_combo.currentIndexChanged.connect(self.update_client_comments)
 
         # Apply styles
         self.apply_styles()
@@ -582,51 +602,62 @@ class AppointmentDialog(QDialog):
         """
         self.setStyleSheet(style)
 
-    def load_clients(self):
-        self.client_combo.clear()
-        session = Session()
-        clients = session.query(Client).all()
-        for client in clients:
-            self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
-        session.close()
-
-    def update_client_combo(self):
-        self.client_combo.clear()
-        for client in self.clients:
-            self.client_combo.addItem(client.name, client.id)
+    def update_client_comments(self):
+        client_id = self.client_combo.currentData()
+        if client_id:
+            session = Session()
+            client = session.query(Client).get(client_id)
+            if client:
+                self.client_comments.setText(client.comments)
+            else:
+                self.client_comments.clear()
+            session.close()
+        else:
+            self.client_comments.clear()
 
     def filter_clients(self):
         search_term = self.client_search.text().lower()
         self.client_combo.clear()
-        session = Session()
-        clients = session.query(Client).filter(
-            (Client.name.ilike(f"%{search_term}%")) |
-            (Client.lastname.ilike(f"%{search_term}%"))
-        ).all()
-        for client in clients:
-            self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
-        session.close()
+        if len(search_term) >= 3:
+            session = Session()
+            clients = session.query(Client).filter(
+                (Client.name.ilike(f"%{search_term}%")) |
+                (Client.lastname.ilike(f"%{search_term}%"))
+            ).all()
+            for client in clients:
+                self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
+            session.close()
 
     def load_appointment(self, appointment_id):
         session = Session()
         appointment = session.query(Appointment).get(appointment_id)
         self.time_edit.setTime(appointment.time)
-        index = self.client_combo.findData(appointment.client_id)
-        if index >= 0:
-            self.client_combo.setCurrentIndex(index)
+        
+        # Cargar el cliente del turno
+        client = appointment.client
+        self.client_search.setText(f"{client.lastname} {client.name}")
+        self.client_combo.clear()
+        self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
+        
         if appointment.repeat_weekly:
             self.repeat_combo.setCurrentIndex(1)
         elif appointment.repeat_monthly:
             self.repeat_combo.setCurrentIndex(2)
         self.confirmed_checkbox.setChecked(appointment.confirmed)
         self.price_input.setText(str(appointment.price) if appointment.price else "")
-        self.status_combo.setCurrentText(appointment.status if appointment.status else "Baño")
+        self.service_combo.setCurrentText(appointment.status if appointment.status else "Baño")
         self.notes_input.setText(appointment.appoint_comment if appointment.appoint_comment else "")
+        self.update_client_comments()
         session.close()
 
     def accept(self):
         session = Session()
         client_id = self.client_combo.currentData()
+        
+        if not client_id:
+            QMessageBox.warning(self, "Error", "Por favor, seleccione un cliente.")
+            return
+
         time = self.time_edit.time().toPyTime()
         repeat = self.repeat_combo.currentText()
         confirmed = self.confirmed_checkbox.isChecked()
@@ -642,9 +673,9 @@ class AppointmentDialog(QDialog):
             except ValueError:
                 QMessageBox.warning(self, "Error de entrada", 
                                     "Por favor, ingrese un número válido para el precio.")
-                return  # No cerramos el diálogo, permitimos al usuario corregir el error
+                return
         
-        status = self.status_combo.currentText()
+        service = self.service_combo.currentText()
         notes = self.notes_input.toPlainText()
 
         if self.appointment_id:
@@ -656,7 +687,7 @@ class AppointmentDialog(QDialog):
             appointment.repeat_monthly = (repeat == "Repetir mensualmente")
             appointment.confirmed = confirmed
             appointment.price = price
-            appointment.status = status
+            appointment.status = service
             appointment.appoint_comment = notes
         else:
             new_appointment = Appointment(
@@ -667,7 +698,7 @@ class AppointmentDialog(QDialog):
                 repeat_monthly=(repeat == "Repetir mensualmente"),
                 confirmed=confirmed,
                 price=price,
-                status=status,
+                status=service,
                 appoint_comment=notes
             )
             session.add(new_appointment)

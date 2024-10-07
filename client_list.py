@@ -10,6 +10,7 @@ import datetime
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 import string, random
 
+
 class ClientListWidget(QWidget):
     def __init__(self):
         super().__init__()
@@ -339,18 +340,33 @@ class ClientEditDialog(QDialog):
 
     def accept(self):
         try:
-            self.client.lastname = self.lastname_input.text().capitalize()
-            self.client.name = self.name_input.text().capitalize()
-            self.client.address = self.address_input.text()
-            self.client.phone = self.phone_input.text()
-            self.client.dog_name = self.dog_name_input.text().capitalize()
+            # Verificar que los campos obligatorios no estén vacíos
+            if not self.lastname_input.text().strip():
+                raise ValueError("El apellido no puede estar vacío.")
+            if not self.name_input.text().strip():
+                raise ValueError("El nombre no puede estar vacío.")
+            if not self.address_input.text().strip():
+                raise ValueError("La dirección no puede estar vacía.")
+            if not self.phone_input.text().strip():
+                raise ValueError("El teléfono no puede estar vacío.")
+            if not self.dog_name_input.text().strip():
+                raise ValueError("El nombre del perro no puede estar vacío.")
             
             breed = self.breed_combo.currentText()
+            if breed == "Seleccione una raza":
+                raise ValueError("Por favor, seleccione una raza.")
+
+            # Actualizar los datos del cliente
+            self.client.lastname = self.lastname_input.text().strip().capitalize()
+            self.client.name = self.name_input.text().strip().capitalize()
+            self.client.address = self.address_input.text().strip()
+            self.client.phone = self.phone_input.text().strip()
+            self.client.dog_name = self.dog_name_input.text().strip().capitalize()
+            
             if breed == "Otro":
                 breed = QInputDialog.getText(self, "Nueva Raza", "Ingrese el nombre de la nueva raza:")[0].strip()
                 if not breed:
-                    QMessageBox.warning(self, "Error", "Por favor, ingrese una raza")
-                    return
+                    raise ValueError("Por favor, ingrese una raza válida.")
                 breed = breed.capitalize()
                 existing_breed = self.session.query(Breed).filter(Breed.name.ilike(breed)).first()
                 if existing_breed:
@@ -360,18 +376,15 @@ class ClientEditDialog(QDialog):
                     self.session.add(new_breed)
                     self.session.commit()
                     self.breed_combo.addItem(breed)
-            elif breed == "Seleccione una raza":
-                QMessageBox.warning(self, "Error", "Por favor, seleccione una raza")
-                return
             
             self.client.breed = breed
             self.client.comments = self.comments_input.toPlainText()
             self.session.commit()
             super().accept()
+        except ValueError as e:
+            QMessageBox.critical(self, "Error", str(e))
         except Exception as e:
             QMessageBox.critical(self, "Error", f"Ocurrió un error al guardar los cambios: {str(e)}")
-        finally:
-            self.session.close()
 
     def delete_client(self):
         confirm = QMessageBox.question(self, "Confirmar Eliminación", 
