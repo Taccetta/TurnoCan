@@ -9,40 +9,72 @@ from database import Session, Client, Appointment, Breed
 from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QCalendarWidget,
     QCheckBox, QComboBox, QSlider, QTimeEdit, QListWidget, QDialog, QDialogButtonBox,
-    QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox
+    QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox,
+    QSplitter, QSplitterHandle
 )
-from PyQt5.QtCore import Qt, QTime, QDate
-from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator
+from PyQt5.QtCore import Qt, QTime, QDate, QPoint
+from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
+
+
+class CustomSplitterHandle(QSplitterHandle):
+    def __init__(self, orientation, parent):
+        super().__init__(orientation, parent)
+        self.setFixedWidth(10)
+
+    def paintEvent(self, event):
+        painter = QPainter(self)
+        painter.setPen(QColor(150, 150, 150))
+        
+        # Dibujar tres puntos verticales
+        center_x = self.width() // 2
+        for i in range(3):
+            y = (self.height() // 2) + (i - 1) * 10
+            painter.drawEllipse(QPoint(center_x, y), 2, 2)
 
 
 class AppointmentCalendarWidget(QWidget):
     def __init__(self):
         super().__init__()
-        layout = QGridLayout()
+        layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # Calendar widget
+        # Crear QSplitter
+        self.splitter = QSplitter(Qt.Horizontal)
+        self.splitter.setHandleWidth(10)
+        self.splitter.setChildrenCollapsible(False)
+        layout.addWidget(self.splitter)
+
+        # Calendario
+        calendar_widget = QWidget()
+        calendar_layout = QVBoxLayout(calendar_widget)
         self.calendar = QCalendarWidget()
-        layout.addWidget(self.calendar, 0, 0)
+        calendar_layout.addWidget(self.calendar)
+        self.splitter.addWidget(calendar_widget)
 
-        # Appointment list
-        self.appointment_list = QListWidget()
-
-        # Contador de turnos
+        # Lista de turnos
+        appointment_widget = QWidget()
+        appointment_layout = QVBoxLayout(appointment_widget)
         self.appointment_count_layout = QHBoxLayout()
         self.appointment_count_label = QLabel("Cantidad Turnos:")
         self.appointment_count_number = QLabel("0")
         self.appointment_count_layout.addWidget(self.appointment_count_label)
         self.appointment_count_layout.addWidget(self.appointment_count_number)
         self.appointment_count_layout.addStretch()
-
-        # Agregar el contador y la lista al layout principal
-        appointment_widget = QWidget()
-        appointment_layout = QVBoxLayout(appointment_widget)
         appointment_layout.addLayout(self.appointment_count_layout)
+        self.appointment_list = QListWidget()
         appointment_layout.addWidget(self.appointment_list)
-        layout.addWidget(appointment_widget, 0, 1)
+        self.splitter.addWidget(appointment_widget)
+
+        # Configurar el splitter para usar nuestro CustomSplitterHandle
+        self.splitter.setStyleSheet("""
+            QSplitterHandle {
+                background-color: #f0f0f0;
+            }
+        """)
+        self.splitter.handle(1).setEnabled(True)
+        self.splitter.setHandleWidth(10)
+        self.splitter.setMidLineWidth(0)
 
         # Buttons layout
         buttons_layout = QHBoxLayout()
@@ -63,7 +95,7 @@ class AppointmentCalendarWidget(QWidget):
         print_btn.clicked.connect(self.print_appointments)
         buttons_layout.addWidget(print_btn)
 
-        layout.addLayout(buttons_layout, 1, 0, 1, 2)
+        layout.addLayout(buttons_layout)
 
         # Connect calendar signals
         self.calendar.selectionChanged.connect(self.load_appointments)
@@ -415,6 +447,10 @@ class AppointmentCalendarWidget(QWidget):
         self.load_appointments()
         self.update_calendar()
  
+    def createHandle(self):
+        return CustomSplitterHandle(self.orientation(), self)
+
+
 class PrintAppointmentsDialog(QDialog):
     def __init__(self, date):
         super().__init__()
