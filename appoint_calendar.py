@@ -247,7 +247,7 @@ class AppointmentCalendarWidget(QWidget):
         # Actualizar el contador de turnos
         self.appointment_count_number.setText(str(len(appointments)))
         
-        for appointment in appointments:
+        for index, appointment in enumerate(appointments, start=1):
             item_widget = QWidget()
             item_layout = QHBoxLayout(item_widget)
             
@@ -266,8 +266,8 @@ class AppointmentCalendarWidget(QWidget):
             # Contenido principal del turno
             content_layout = QVBoxLayout()
             
-            # Hora, fecha, cliente y mascota en una línea
-            time_date_client_info = QLabel(f"<b>{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
+            # Número de orden, hora, fecha, cliente y mascota en una línea
+            time_date_client_info = QLabel(f"<b>{index}- {appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
                                            f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
                                            f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
             time_date_client_info.setStyleSheet("font-size: 13px; color: #333;")
