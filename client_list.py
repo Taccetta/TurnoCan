@@ -252,6 +252,10 @@ class ClientEditDialog(QDialog):
         self.load_breeds()
         self.breed_combo.setCurrentText(self.client.breed)
 
+        # Nuevo campo para raza personalizada
+        self.custom_breed_input = QLineEdit()
+        self.custom_breed_input.setVisible(False)
+
         # Comments section
         self.comments_input = QTextEdit(self.client.comments)
 
@@ -268,6 +272,7 @@ class ClientEditDialog(QDialog):
         layout.addWidget(self.dog_name_input)
         layout.addWidget(QLabel("Raza:"))
         layout.addWidget(self.breed_combo)
+        layout.addWidget(self.custom_breed_input)
         layout.addWidget(QLabel("Comentarios:"))
         layout.addWidget(self.comments_input)
 
@@ -287,22 +292,19 @@ class ClientEditDialog(QDialog):
         delete_button.setObjectName("delete-button")
         layout.addWidget(delete_button)
 
+        # Conectar la señal de cambio en el combo box
+        self.breed_combo.currentTextChanged.connect(self.on_breed_changed)
+
         # Apply styles
         self.apply_styles(button_box)
 
     def apply_styles(self, button_box):
         """Apply QSS styles to the widgets."""
         style = """
-        QLineEdit, QTextEdit {
+        QLineEdit, QTextEdit, QComboBox {
             padding: 8px;
             border: 1px solid #ced4da;
             border-radius: 5px;
-        }
-        QComboBox {
-            padding: 8px;
-            border: 1px solid #ced4da;
-            border-radius: 5px;
-            background-color: white;
         }
         QLabel {
             font-weight: bold;
@@ -338,6 +340,9 @@ class ClientEditDialog(QDialog):
         for breed in breeds:
             self.breed_combo.addItem(breed.name)
 
+    def on_breed_changed(self, text):
+        self.custom_breed_input.setVisible(text == "Otro")
+
     def accept(self):
         try:
             # Verificar que los campos obligatorios no estén vacíos
@@ -355,16 +360,8 @@ class ClientEditDialog(QDialog):
             breed = self.breed_combo.currentText()
             if breed == "Seleccione una raza":
                 raise ValueError("Por favor, seleccione una raza.")
-
-            # Actualizar los datos del cliente
-            self.client.lastname = self.lastname_input.text().strip().capitalize()
-            self.client.name = self.name_input.text().strip().capitalize()
-            self.client.address = self.address_input.text().strip()
-            self.client.phone = self.phone_input.text().strip()
-            self.client.dog_name = self.dog_name_input.text().strip().capitalize()
-            
-            if breed == "Otro":
-                breed = QInputDialog.getText(self, "Nueva Raza", "Ingrese el nombre de la nueva raza:")[0].strip()
+            elif breed == "Otro":
+                breed = self.custom_breed_input.text().strip()
                 if not breed:
                     raise ValueError("Por favor, ingrese una raza válida.")
                 breed = breed.capitalize()
@@ -376,6 +373,13 @@ class ClientEditDialog(QDialog):
                     self.session.add(new_breed)
                     self.session.commit()
                     self.breed_combo.addItem(breed)
+
+            # Actualizar los datos del cliente
+            self.client.lastname = self.lastname_input.text().strip().capitalize()
+            self.client.name = self.name_input.text().strip().capitalize()
+            self.client.address = self.address_input.text().strip()
+            self.client.phone = self.phone_input.text().strip()
+            self.client.dog_name = self.dog_name_input.text().strip().capitalize()
             
             self.client.breed = breed
             self.client.comments = self.comments_input.toPlainText()
