@@ -128,6 +128,21 @@ class CreateClientWidget(QWidget):
         self.custom_breed_input.setVisible(text == "Otro")
 
     def create_client(self):
+        # Verificar campos obligatorios
+        required_fields = [
+            (self.lastname_input.text().strip(), "Apellido"),
+            (self.name_input.text().strip(), "Nombre"),
+            (self.address_input.text().strip(), "Dirección"),
+            (self.phone_input.text().strip(), "Teléfono"),
+            (self.dog_name_input.text().strip(), "Nombre del perro")
+        ]
+        
+        missing_fields = [field[1] for field in required_fields if not field[0]]
+        
+        if missing_fields:
+            QMessageBox.warning(self, "Error", f"Por favor, complete los siguientes campos obligatorios: {', '.join(missing_fields)}")
+            return
+
         session = Session()
         breed = self.breed_combo.currentText()
         if breed == "Otro":
