@@ -153,6 +153,10 @@ class BackupWidget(QWidget):
     def do_backup(self):
         backup_path, _ = QFileDialog.getSaveFileName(self, "Guardar Backup", "", "Database Files (*.db)")
         if backup_path:
+            if os.path.basename(backup_path).lower() == "dog_grooming.db":
+                QMessageBox.warning(self, "Nombre no permitido", "No se permite guardar con el nombre 'dog_grooming.db'")
+                return
+            
             if realizar_backup(backup_path):
                 QMessageBox.information(self, "Éxito", "Backup realizado correctamente")
             else:
@@ -160,6 +164,9 @@ class BackupWidget(QWidget):
 
     def do_restore(self):
         backup_path, _ = QFileDialog.getOpenFileName(self, "Seleccionar Backup", "", "Database Files (*.db)")
+        if os.path.basename(backup_path).lower() == "dog_grooming.db":
+            QMessageBox.warning(self, "Nombre no permitido", "No se permite cargar una base de datos con el nombre 'dog_grooming.db'")
+            return
         if backup_path:
             if restaurar_backup(backup_path):
                 QMessageBox.information(self, "Éxito", "Backup restaurado correctamente")
