@@ -76,6 +76,9 @@ class AppointmentCalendarWidget(QWidget):
         self.splitter.setHandleWidth(10)
         self.splitter.setMidLineWidth(0)
 
+        # Ajustar la posición inicial del divisor
+        self.splitter.setSizes([50, 350])  # Ajusta estos valores según tus preferencias
+
         # Buttons layout
         buttons_layout = QHBoxLayout()
 
@@ -219,6 +222,12 @@ class AppointmentCalendarWidget(QWidget):
             font-size: 14px;
             color: #007bff;
         }
+
+        /* Añadir estilos específicos para los botones de editar y borrar */
+        QPushButton#edit_button, QPushButton#delete_button {
+            padding: 2px;
+            font-size: 11px;
+        }
         """
         self.setStyleSheet(style)
 
@@ -301,14 +310,17 @@ class AppointmentCalendarWidget(QWidget):
             buttons_layout.addWidget(confirmed_checkbox)
             
             edit_button = QPushButton("Editar")
+            edit_button.setFixedSize(60, 25)  # Tamaño más pequeño
             edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
             buttons_layout.addWidget(edit_button)
             
             delete_button = QPushButton("Borrar")
+            delete_button.setFixedSize(60, 25)  # Tamaño más pequeño
             delete_button.setObjectName("delete_button") 
             delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
             buttons_layout.addWidget(delete_button)
             
+            buttons_layout.addStretch()  # Añadir espacio flexible al final
             content_layout.addLayout(buttons_layout)
             
             item_layout.addLayout(content_layout)
