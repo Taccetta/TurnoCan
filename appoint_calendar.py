@@ -234,39 +234,32 @@ class AppointmentCalendarWidget(QWidget):
             # Contenido principal del turno
             content_layout = QVBoxLayout()
             
-            # Hora y fecha al principio
-            time_date_label = QLabel(f"<b>{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b>")
-            time_date_label.setStyleSheet("font-size: 14px; color: #333;")
-            content_layout.addWidget(time_date_label)
+            # Hora, fecha, cliente y mascota en una línea
+            time_date_client_info = QLabel(f"<b>{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
+                                           f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
+                                           f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
+            time_date_client_info.setStyleSheet("font-size: 13px; color: #333;")
+            content_layout.addWidget(time_date_client_info)
             
-            # Información del cliente y la mascota
-            client_info = QLabel(f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
-                                 f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
-            client_info.setStyleSheet("font-size: 13px;")
-            content_layout.addWidget(client_info)
-            
-            # Dirección y teléfono
+            # Dirección y teléfono en una línea
             contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
             contact_info.setStyleSheet("font-size: 12px; color: #555;")
             content_layout.addWidget(contact_info)
             
-            # Comentarios del cliente
+            # Comentarios del cliente (si existen)
             if appointment.client.comments:
                 client_comments = QLabel(f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}")
                 client_comments.setStyleSheet("font-size: 12px; font-style: italic; color: #666;")
                 client_comments.setWordWrap(True)
                 content_layout.addWidget(client_comments)
             
-            # Estado, precio y notas
-            details = QLabel(f"Estado: {appointment.status or 'No especificado'} - "
-                             f"Precio: ${appointment.price or 'No especificado'}")
+            # Servicio, precio y notas en una línea
+            details = QLabel(f"Servicio: {appointment.status or 'No especificado'} - "
+                             f"Precio: ${appointment.price or 'No especificado'} - "
+                             f"Notas: {appointment.appoint_comment or 'Sin notas'}")
             details.setStyleSheet("font-size: 12px;")
+            details.setWordWrap(True)
             content_layout.addWidget(details)
-            
-            if appointment.appoint_comment:
-                notes = QLabel(f"Notas: {appointment.appoint_comment}")
-                notes.setStyleSheet("font-size: 12px; font-style: italic; color: #666;")
-                content_layout.addWidget(notes)
             
             # Botones y checkbox
             buttons_layout = QHBoxLayout()
@@ -447,13 +440,13 @@ class PrintAppointmentsDialog(QDialog):
         appointments = session.query(Appointment).filter(Appointment.date == self.date).order_by(Appointment.time).all()
         text = ""
         for appointment in appointments:
-            text += f"{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')} - {appointment.client.lastname} {appointment.client.name} - "
-            text += f"Perro: {appointment.client.dog_name} - Raza: {appointment.client.breed} - "
-            text += f"Dirección: {appointment.client.address} - Teléfono: {appointment.client.phone}\n"
+            text += f"{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}  -  {appointment.client.lastname} {appointment.client.name}  -  "
+            text += f"Perro: {appointment.client.dog_name}  -  Raza: {appointment.client.breed}  -  "
+            text += f"Dirección: {appointment.client.address}  -  Teléfono: {appointment.client.phone}\n"
             if appointment.client.comments:
-                text += f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}\n"
-            text += f"Estado: {appointment.status or 'No especificado'} - "
-            text += f"Precio: ${appointment.price or 'No especificado'}\n"
+                text += f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}  -  "
+            text += f"Servicio: {appointment.status or 'No especificado'}  -  "
+            text += f"Precio: ${appointment.price or 'No especificado'}  -  "
             text += f"Notas: {appointment.appoint_comment or 'Sin notas'}\n"
             if appointment.confirmed:
                 text += "CONFIRMADO\n"
