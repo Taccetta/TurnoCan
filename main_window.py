@@ -20,14 +20,14 @@ class MainWindow(QMainWindow):
 
         # Header
         header_layout = QHBoxLayout()
-        create_client_btn = QPushButton("Crear Cliente")
-        clients_btn = QPushButton("Clientes")
-        appointments_btn = QPushButton("Calendario de Turnos")
-        appointment_search_btn = QPushButton("Buscar Turnos")  # Nuevo botón
-        backup_btn = QPushButton("Backup")
+        self.create_client_btn = QPushButton("Crear Cliente")
+        self.clients_btn = QPushButton("Clientes")
+        self.appointments_btn = QPushButton("Calendario de Turnos")
+        self.appointment_search_btn = QPushButton("Buscar Turnos")  # Nuevo botón
+        self.backup_btn = QPushButton("Backup")
 
-        # Apply QSS (styles)
-        button_style = """
+        # Estilos de botones
+        self.button_style = """
         QPushButton {
             background-color: #007bff;
             color: white;
@@ -42,18 +42,26 @@ class MainWindow(QMainWindow):
             background-color: #004085;
         }
         """
+        
+        self.active_button_style = """
+        QPushButton {
+            background-color: #004085;
+            color: white;
+            padding: 10px;
+            border: none;
+            border-radius: 5px;
+        }
+        """
 
-        create_client_btn.setStyleSheet(button_style)
-        clients_btn.setStyleSheet(button_style)
-        appointments_btn.setStyleSheet(button_style)
-        appointment_search_btn.setStyleSheet(button_style)  # Aplicar estilo al nuevo botón
-        backup_btn.setStyleSheet(button_style)
+        # Aplicar estilos iniciales
+        for btn in [self.create_client_btn, self.clients_btn, self.appointments_btn, self.appointment_search_btn, self.backup_btn]:
+            btn.setStyleSheet(self.button_style)
 
-        header_layout.addWidget(create_client_btn)
-        header_layout.addWidget(clients_btn)
-        header_layout.addWidget(appointments_btn)
-        header_layout.addWidget(appointment_search_btn)  # Agregar el nuevo botón
-        header_layout.addWidget(backup_btn)
+        header_layout.addWidget(self.create_client_btn)
+        header_layout.addWidget(self.clients_btn)
+        header_layout.addWidget(self.appointments_btn)
+        header_layout.addWidget(self.appointment_search_btn)  # Agregar el nuevo botón
+        header_layout.addWidget(self.backup_btn)
 
         main_layout.addLayout(header_layout)
 
@@ -73,9 +81,22 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(self.stacked_widget)
 
-        # Connect buttons to change stacked widget
-        create_client_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.create_client_widget))
-        clients_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.client_list_widget))
-        appointments_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.appointment_calendar_widget))
-        appointment_search_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.appointment_search_widget))  # Conectar el nuevo botón
-        backup_btn.clicked.connect(lambda: self.stacked_widget.setCurrentWidget(self.backup_widget))
+        # Conectar botones
+        self.create_client_btn.clicked.connect(lambda: self.change_section(self.create_client_widget, self.create_client_btn))
+        self.clients_btn.clicked.connect(lambda: self.change_section(self.client_list_widget, self.clients_btn))
+        self.appointments_btn.clicked.connect(lambda: self.change_section(self.appointment_calendar_widget, self.appointments_btn))
+        self.appointment_search_btn.clicked.connect(lambda: self.change_section(self.appointment_search_widget, self.appointment_search_btn))
+        self.backup_btn.clicked.connect(lambda: self.change_section(self.backup_widget, self.backup_btn))
+
+        # Botón activo inicial
+        self.active_button = None
+
+    def change_section(self, widget, button):
+        self.stacked_widget.setCurrentWidget(widget)
+        self.update_active_button(button)
+
+    def update_active_button(self, new_active_button):
+        if self.active_button:
+            self.active_button.setStyleSheet(self.button_style)
+        new_active_button.setStyleSheet(self.active_button_style)
+        self.active_button = new_active_button

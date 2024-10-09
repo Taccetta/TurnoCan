@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt, QTime, QDate, QTimer
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
-from sqlalchemy import or_, desc
+from sqlalchemy import or_, desc, String, cast, Date, Time, extract, and_
 from database import Session, Appointment, Client
 import datetime
 
@@ -126,13 +126,30 @@ class AppointmentSearchWidget(QWidget):
         query = session.query(Appointment).join(Client)
         
         if search_term:
+            # Eliminar cualquier barra al final del término de búsqueda
+            search_term = search_term.rstrip('/')
+            
+            # Intentar extraer componentes de fecha
+            date_components = search_term.split('/')
+            
+            date_conditions = []
+            if len(date_components) > 0 and date_components[0].isdigit():
+                date_conditions.append(extract('day', Appointment.date) == int(date_components[0]))
+            if len(date_components) > 1 and date_components[1].isdigit():
+                date_conditions.append(extract('month', Appointment.date) == int(date_components[1]))
+            if len(date_components) > 2 and date_components[2].isdigit():
+                date_conditions.append(extract('year', Appointment.date) == int(date_components[2]))
+            
             query = query.filter(
                 or_(
                     Client.lastname.ilike(f"%{search_term}%"),
                     Client.name.ilike(f"%{search_term}%"),
                     Client.dog_name.ilike(f"%{search_term}%"),
                     Appointment.status.ilike(f"%{search_term}%"),
-                    Appointment.appoint_comment.ilike(f"%{search_term}%")
+                    Appointment.appoint_comment.ilike(f"%{search_term}%"),
+                    cast(Appointment.time, String).like(f"%{search_term}%"),
+                    cast(Appointment.price, String).like(f"%{search_term}%"),
+                    and_(*date_conditions) if date_conditions else False
                 )
             )
         
