@@ -94,6 +94,12 @@ class MainWindow(QMainWindow):
     def change_section(self, widget, button):
         self.stacked_widget.setCurrentWidget(widget)
         self.update_active_button(button)
+        
+        # Acciones adicionales para botones específicos
+        if button == self.clients_btn:
+            self.client_list_widget.search_clients()
+        elif button == self.appointment_search_btn:
+            self.appointment_search_widget.search_appointments() 
 
     def update_active_button(self, new_active_button):
         if self.active_button:
