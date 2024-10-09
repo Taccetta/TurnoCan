@@ -1,10 +1,11 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, 
                              QCalendarWidget, QCheckBox, QMessageBox, QComboBox, QSlider, 
                              QTimeEdit, QListWidget, QDialog, QDialogButtonBox, QTextEdit,
-                             QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout)
+                             QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout,
+                             QTableWidget, QTableWidgetItem, QHeaderView)
 from PyQt5.QtCore import Qt, QTime, QDate, QTimer
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
-from sqlalchemy import or_
+from sqlalchemy import or_, desc
 from database import Session, Client, Appointment, Breed
 import datetime
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
@@ -30,10 +31,15 @@ class ClientListWidget(QWidget):
         search_layout.addWidget(self.search_button) 
         layout.addLayout(search_layout)
 
-        # Client list
-        self.client_list = QListWidget()
-        self.client_list.itemDoubleClicked.connect(self.edit_client)
-        layout.addWidget(self.client_list)
+        # Client table
+        self.client_table = QTableWidget()
+        self.client_table.setColumnCount(7)
+        self.client_table.setHorizontalHeaderLabels(["Apellido", "Nombre", "Dirección", "Teléfono", "Nombre del perro", "Raza", "Comentarios"])
+        self.client_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.client_table.horizontalHeader().sectionClicked.connect(self.sort_table)
+        self.client_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.client_table.doubleClicked.connect(self.edit_client)
+        layout.addWidget(self.client_table)
 
         # Pagination controls
         pagination_layout = QHBoxLayout()
@@ -43,7 +49,7 @@ class ClientListWidget(QWidget):
         self.next_button.clicked.connect(self.next_page)
         self.page_label = QLabel("Página 1 de 1")
         self.items_per_page_combo = QComboBox()
-        self.items_per_page_combo.addItems(["50", "100", "200", "1000"])
+        self.items_per_page_combo.addItems(["15","50", "100", "200", "1000"])
         self.items_per_page_combo.currentTextChanged.connect(self.change_items_per_page)
         
         pagination_layout.addWidget(self.prev_button)
@@ -60,10 +66,12 @@ class ClientListWidget(QWidget):
 
         # Pagination variables
         self.current_page = 1
-        self.items_per_page = 50  # Cambiado a 50 como valor predeterminado
+        self.items_per_page = 50
         self.total_pages = 1
         self.total_clients = 0
         self.current_search = ""
+        self.current_sort_column = 0
+        self.current_sort_order = Qt.AscendingOrder
 
         # Timer para retrasar la búsqueda
         self.search_timer = QTimer()
@@ -82,9 +90,8 @@ class ClientListWidget(QWidget):
         self.apply_styles()
 
     def on_search_text_changed(self):
-        # Reiniciar el temporizador cada vez que el texto cambie
         self.search_timer.stop()
-        self.search_timer.start(300)  # Esperar 300ms antes de realizar la búsqueda
+        self.search_timer.start(300)
 
     def search_clients(self):
         self.current_search = self.search_input.text()
@@ -122,7 +129,7 @@ class ClientListWidget(QWidget):
         self.setStyleSheet(style)
 
     def load_clients(self, search_term=None):
-        self.client_list.clear()
+        self.client_table.setRowCount(0)
         session = Session()
         query = session.query(Client)
         
@@ -142,24 +149,60 @@ class ClientListWidget(QWidget):
         self.total_clients = query.count()
         self.total_pages = (self.total_clients + self.items_per_page - 1) // self.items_per_page
         
-        clients = query.order_by(Client.lastname.asc(), Client.name.asc())\
-                       .offset((self.current_page - 1) * self.items_per_page)\
+        # Aplicar ordenamiento
+        if self.current_sort_order == Qt.AscendingOrder:
+            query = query.order_by(getattr(Client, self.get_column_name(self.current_sort_column)))
+        else:
+            query = query.order_by(desc(getattr(Client, self.get_column_name(self.current_sort_column))))
+        
+        clients = query.offset((self.current_page - 1) * self.items_per_page)\
                        .limit(self.items_per_page)\
                        .all()
         
-        for client in clients:
-            
-            item = QListWidgetItem(
-                f"{client.lastname} {client.name} - {client.dog_name} ({client.breed}) - "
-                f"Dirección: {client.address} - "
-                f"Teléfono: {client.phone} - "
-                f"Comentarios: {client.comments[:20].replace('\n', ' ') + '...' if len(client.comments) > 20 else client.comments.replace('\n', ' ')}")
-            item.setData(Qt.UserRole, client.id)
-            self.client_list.addItem(item)
+        self.client_table.setRowCount(len(clients))
+        for row, client in enumerate(clients):
+            self.client_table.setItem(row, 0, QTableWidgetItem(client.lastname))
+            self.client_table.setItem(row, 1, QTableWidgetItem(client.name))
+            self.client_table.setItem(row, 2, QTableWidgetItem(client.address))
+            self.client_table.setItem(row, 3, QTableWidgetItem(client.phone))
+            self.client_table.setItem(row, 4, QTableWidgetItem(client.dog_name))
+            self.client_table.setItem(row, 5, QTableWidgetItem(client.breed))
+            self.client_table.setItem(row, 6, QTableWidgetItem(client.comments))
+            for col in range(7):
+                self.client_table.item(row, col).setData(Qt.UserRole, client.id)
         
         session.close()
         self.update_pagination_controls()
         self.update_client_count()
+        self.update_sort_indicator()  # Añadir esta línea
+
+    def get_column_name(self, column_index):
+        column_names = ['lastname', 'name', 'address', 'phone', 'dog_name', 'breed', 'comments']
+        return column_names[column_index]
+
+    def sort_table(self, column):
+        if column == self.current_sort_column:
+            # Cambiar el orden si se hace clic en la misma columna
+            self.current_sort_order = Qt.DescendingOrder if self.current_sort_order == Qt.AscendingOrder else Qt.AscendingOrder
+        else:
+            self.current_sort_column = column
+            self.current_sort_order = Qt.AscendingOrder
+        
+        self.load_clients(self.current_search)
+        self.update_sort_indicator()
+
+    def update_sort_indicator(self):
+        header = self.client_table.horizontalHeader()
+        for i in range(self.client_table.columnCount()):
+            item = self.client_table.horizontalHeaderItem(i)
+            text = item.text().split()[0]  # Obtener el texto base sin flechas
+            if i == self.current_sort_column:
+                if self.current_sort_order == Qt.AscendingOrder:
+                    item.setText(f"{text} ▲")
+                else:
+                    item.setText(f"{text} ▼")
+            else:
+                item.setText(text)
 
     def update_pagination_controls(self):
         self.page_label.setText(f"Página {self.current_page} de {self.total_pages}")

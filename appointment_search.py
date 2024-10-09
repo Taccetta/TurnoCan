@@ -1,10 +1,12 @@
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, 
-                             QListWidget, QDialog, QDialogButtonBox, QTextEdit, QComboBox,
-                             QListWidgetItem, QGridLayout, QMessageBox)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QFont
+                             QCalendarWidget, QCheckBox, QMessageBox, QComboBox, QSlider, 
+                             QTimeEdit, QListWidget, QDialog, QDialogButtonBox, QTextEdit,
+                             QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout,
+                             QTableWidget, QTableWidgetItem, QHeaderView)
+from PyQt5.QtCore import Qt, QTime, QDate, QTimer
+from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
+from sqlalchemy import or_, desc
 from database import Session, Appointment, Client
-from sqlalchemy import or_
 import datetime
 
 class AppointmentSearchWidget(QWidget):
@@ -23,13 +25,18 @@ class AppointmentSearchWidget(QWidget):
         # Layout for search bar
         search_layout = QHBoxLayout()
         search_layout.addWidget(self.search_input)
-        search_layout.addWidget(self.search_button)  # Agregar esta línea
+        search_layout.addWidget(self.search_button)
         layout.addLayout(search_layout)
 
-        # Appointment list
-        self.appointment_list = QListWidget()
-        self.appointment_list.itemDoubleClicked.connect(self.view_appointment)
-        layout.addWidget(self.appointment_list)
+        # Appointment table
+        self.appointment_table = QTableWidget()
+        self.appointment_table.setColumnCount(8)
+        self.appointment_table.setHorizontalHeaderLabels(["Fecha", "Hora", "Cliente", "Perro", "Estado", "Precio", "Confirmado", "Notas"])
+        self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.appointment_table.horizontalHeader().sectionClicked.connect(self.sort_table)
+        self.appointment_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.appointment_table.doubleClicked.connect(self.view_appointment)
+        layout.addWidget(self.appointment_table)
 
         # Pagination controls
         pagination_layout = QHBoxLayout()
@@ -39,7 +46,7 @@ class AppointmentSearchWidget(QWidget):
         self.next_button.clicked.connect(self.next_page)
         self.page_label = QLabel("Página 1 de 1")
         self.items_per_page_combo = QComboBox()
-        self.items_per_page_combo.addItems(["50", "100", "200", "1000"])
+        self.items_per_page_combo.addItems(["15","50", "100", "200", "1000"])
         self.items_per_page_combo.currentTextChanged.connect(self.change_items_per_page)
         
         pagination_layout.addWidget(self.prev_button)
@@ -60,6 +67,8 @@ class AppointmentSearchWidget(QWidget):
         self.total_pages = 1
         self.total_appointments = 0
         self.current_search = ""
+        self.current_sort_column = 0
+        self.current_sort_order = Qt.AscendingOrder
 
         # Timer para retrasar la búsqueda
         self.search_timer = QTimer()
@@ -82,6 +91,7 @@ class AppointmentSearchWidget(QWidget):
         self.load_appointments(self.current_search)
 
     def apply_styles(self):
+        """Apply QSS styles to widgets."""
         style = """
         QLineEdit, QComboBox {
             padding: 8px;
@@ -101,7 +111,7 @@ class AppointmentSearchWidget(QWidget):
         QPushButton:pressed {
             background-color: #004085;
         }
-        QListWidget {
+        QTableWidget {
             border: 1px solid #ced4da;
             border-radius: 5px;
             padding: 5px;
@@ -111,7 +121,7 @@ class AppointmentSearchWidget(QWidget):
         self.setStyleSheet(style)
 
     def load_appointments(self, search_term=None):
-        self.appointment_list.clear()
+        self.appointment_table.setRowCount(0)
         session = Session()
         query = session.query(Appointment).join(Client)
         
@@ -129,30 +139,63 @@ class AppointmentSearchWidget(QWidget):
         self.total_appointments = query.count()
         self.total_pages = (self.total_appointments + self.items_per_page - 1) // self.items_per_page
         
-        appointments = query.order_by(Appointment.date.desc(), Appointment.time.desc())\
-                            .offset((self.current_page - 1) * self.items_per_page)\
+        # Aplicar ordenamiento
+        if self.current_sort_order == Qt.AscendingOrder:
+            query = query.order_by(getattr(Appointment, self.get_column_name(self.current_sort_column)))
+        else:
+            query = query.order_by(desc(getattr(Appointment, self.get_column_name(self.current_sort_column))))
+        
+        appointments = query.offset((self.current_page - 1) * self.items_per_page)\
                             .limit(self.items_per_page)\
                             .all()
         
-        for appointment in appointments:
-            comment = appointment.appoint_comment or ""  # Si es None, usamos una cadena vacía
-            formatted_comment = (comment[:20].replace('\n', ' ') + '...' if len(comment) > 20 
-                                 else comment.replace('\n', ' '))
-            
-            item = QListWidgetItem(
-                f"{appointment.date.strftime('%d/%m/%Y')} {appointment.time.strftime('%H:%M')} - "
-                f"{appointment.client.lastname} {appointment.client.name} - "
-                f"{appointment.client.dog_name} - {appointment.status} - "
-                f"{appointment.price} - "
-                f"{'Confirmado' if appointment.confirmed else 'No confirmado'} - "
-                f"{formatted_comment}"
-            )
-            item.setData(Qt.UserRole, appointment.id)
-            self.appointment_list.addItem(item)
+        self.appointment_table.setRowCount(len(appointments))
+        for row, appointment in enumerate(appointments):
+            self.appointment_table.setItem(row, 0, QTableWidgetItem(appointment.date.strftime('%d/%m/%Y')))
+            self.appointment_table.setItem(row, 1, QTableWidgetItem(appointment.time.strftime('%H:%M')))
+            self.appointment_table.setItem(row, 2, QTableWidgetItem(f"{appointment.client.lastname} {appointment.client.name}"))
+            self.appointment_table.setItem(row, 3, QTableWidgetItem(appointment.client.dog_name))
+            self.appointment_table.setItem(row, 4, QTableWidgetItem(appointment.status))
+            self.appointment_table.setItem(row, 5, QTableWidgetItem(str(appointment.price) if appointment.price else ""))
+            self.appointment_table.setItem(row, 6, QTableWidgetItem("Sí" if appointment.confirmed else "No"))
+            comment = appointment.appoint_comment or ""
+            formatted_comment = (comment[:20].replace('\n', ' ') + '...' if len(comment) > 20 else comment.replace('\n', ' '))
+            self.appointment_table.setItem(row, 7, QTableWidgetItem(formatted_comment))
+            for col in range(8):
+                self.appointment_table.item(row, col).setData(Qt.UserRole, appointment.id)
         
         session.close()
         self.update_pagination_controls()
         self.update_appointment_count()
+        self.update_sort_indicator()
+
+    def get_column_name(self, column_index):
+        column_names = ['date', 'time', 'client_id', 'client_id', 'status', 'price', 'confirmed', 'appoint_comment']
+        return column_names[column_index]
+
+    def sort_table(self, column):
+        if column == self.current_sort_column:
+            # Cambiar el orden si se hace clic en la misma columna
+            self.current_sort_order = Qt.DescendingOrder if self.current_sort_order == Qt.AscendingOrder else Qt.AscendingOrder
+        else:
+            self.current_sort_column = column
+            self.current_sort_order = Qt.AscendingOrder
+        
+        self.load_appointments(self.current_search)
+        self.update_sort_indicator()
+
+    def update_sort_indicator(self):
+        header = self.appointment_table.horizontalHeader()
+        for i in range(self.appointment_table.columnCount()):
+            item = self.appointment_table.horizontalHeaderItem(i)
+            text = item.text().split()[0]  # Obtener el texto base sin flechas
+            if i == self.current_sort_column:
+                if self.current_sort_order == Qt.AscendingOrder:
+                    item.setText(f"{text} ▲")
+                else:
+                    item.setText(f"{text} ▼")
+            else:
+                item.setText(text)
 
     def update_pagination_controls(self):
         self.page_label.setText(f"Página {self.current_page} de {self.total_pages}")
