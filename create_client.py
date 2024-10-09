@@ -170,7 +170,7 @@ class CreateClientWidget(QWidget):
         new_client = Client(
             lastname=self.lastname_input.text().capitalize(),
             name=self.name_input.text().capitalize(),
-            address=self.address_input.text(),
+            address=self.address_input.text().capitalize(),  # Capitalizado aquí
             phone=self.phone_input.text(),
             dog_name=self.dog_name_input.text().capitalize(),
             breed=breed,

@@ -46,7 +46,7 @@ class AppointmentSearchWidget(QWidget):
         self.next_button.clicked.connect(self.next_page)
         self.page_label = QLabel("Página 1 de 1")
         self.items_per_page_combo = QComboBox()
-        self.items_per_page_combo.addItems(["15","50", "100", "200", "1000"])
+        self.items_per_page_combo.addItems(["15", "20", "50", "100", "1000"])
         self.items_per_page_combo.currentTextChanged.connect(self.change_items_per_page)
         
         pagination_layout.addWidget(self.prev_button)
@@ -63,7 +63,7 @@ class AppointmentSearchWidget(QWidget):
 
         # Pagination variables
         self.current_page = 1
-        self.items_per_page = 50
+        self.items_per_page = 15
         self.total_pages = 1
         self.total_appointments = 0
         self.current_search = ""
