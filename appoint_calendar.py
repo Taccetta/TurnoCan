@@ -12,8 +12,8 @@ from PyQt5.QtWidgets import (
     QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox,
     QSplitter, QSplitterHandle
 )
-from PyQt5.QtCore import Qt, QTime, QDate, QPoint
-from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter
+from PyQt5.QtCore import Qt, QTime, QDate, QPoint, QSize
+from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter, QPen
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 
 
@@ -26,11 +26,15 @@ class CustomSplitterHandle(QSplitterHandle):
         painter = QPainter(self)
         painter.setPen(QColor(150, 150, 150))
         
-        # Dibujar tres puntos verticales
+        # Dibujar tres líneas verticales
+        pen = QPen(QColor(150, 150, 150), 1, Qt.SolidLine)
+        painter.setPen(pen)
         center_x = self.width() // 2
-        for i in range(3):
-            y = (self.height() // 2) + (i - 1) * 10
-            painter.drawEllipse(QPoint(center_x, y), 2, 2)
+        for i in range(-1, 2):
+            painter.drawLine(center_x + i*2, self.height() // 2 - 10, center_x + i*2, self.height() // 2 + 10)
+
+    def sizeHint(self):
+        return QSize(10, super().sizeHint().height())
 
 
 class AppointmentCalendarWidget(QWidget):
@@ -46,11 +50,11 @@ class AppointmentCalendarWidget(QWidget):
         layout.addWidget(self.splitter)
 
         # Calendario
-        calendar_widget = QWidget()
-        calendar_layout = QVBoxLayout(calendar_widget)
+        self.calendar_widget = QWidget()
+        calendar_layout = QVBoxLayout(self.calendar_widget)
         self.calendar = QCalendarWidget()
         calendar_layout.addWidget(self.calendar)
-        self.splitter.addWidget(calendar_widget)
+        self.splitter.addWidget(self.calendar_widget)
 
         # Lista de turnos
         appointment_widget = QWidget()
@@ -66,18 +70,20 @@ class AppointmentCalendarWidget(QWidget):
         appointment_layout.addWidget(self.appointment_list)
         self.splitter.addWidget(appointment_widget)
 
-        # Configurar el splitter para usar nuestro CustomSplitterHandle
+        # Configurar el splitter
         self.splitter.setStyleSheet("""
             QSplitterHandle {
                 background-color: #f0f0f0;
             }
+            QSplitterHandle:hover {
+                background-color: #e0e0e0;
+            }
         """)
-        self.splitter.handle(1).setEnabled(True)
-        self.splitter.setHandleWidth(10)
-        self.splitter.setMidLineWidth(0)
 
-        # Ajustar la posición inicial del divisor
-        self.splitter.setSizes([50, 350])  # Ajusta estos valores según tus preferencias
+        # Guardar las posiciones iniciales del divisor
+        self.initial_sizes = [300, 500]  # Ajusta estos valores según tus preferencias
+        self.splitter.setSizes(self.initial_sizes)
+        self.last_visible_sizes = self.initial_sizes.copy()
 
         # Buttons layout
         buttons_layout = QHBoxLayout()
@@ -240,11 +246,14 @@ class AppointmentCalendarWidget(QWidget):
         self.appointment_count_number.setStyleSheet("font-size: 14px; color: #007bff;")
 
     def toggle_calendar(self):
-        if self.calendar.isVisible():
-            self.calendar.hide()
+        if self.calendar_widget.isVisible():
+            self.last_visible_sizes = self.splitter.sizes()
+            self.calendar_widget.hide()
+            self.splitter.setSizes([0, sum(self.last_visible_sizes)])
             self.toggle_calendar_btn.setText("Mostrar Calendario")
         else:
-            self.calendar.show()
+            self.calendar_widget.show()
+            self.splitter.setSizes(self.last_visible_sizes)
             self.toggle_calendar_btn.setText("Ocultar Calendario")
 
     def load_appointments(self):
