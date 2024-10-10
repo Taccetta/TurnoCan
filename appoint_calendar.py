@@ -609,80 +609,109 @@ class AppointmentDialog(QDialog):
         self.date = date
         self.appointment_id = appointment_id
         self.setWindowTitle("Crear Turno" if appointment_id is None else "Editar Turno")
+        self.setMinimumWidth(600)
         layout = QVBoxLayout()
         self.setLayout(layout)
 
-        # Search for client
+        # Grid layout para los campos
+        grid_layout = QGridLayout()
+        layout.addLayout(grid_layout)
+
+        # Cliente
+        grid_layout.addWidget(QLabel("Cliente:"), 0, 0, 1, 2)
+        client_layout = QHBoxLayout()
         self.client_search = QLineEdit()
-        layout.addWidget(QLabel("Cliente:"))
         self.client_search.setPlaceholderText("Buscar cliente...")
         self.client_search.textChanged.connect(self.filter_clients)
-        layout.addWidget(self.client_search)
-
-        # Client combo box
         self.client_combo = QComboBox()
-        layout.addWidget(self.client_combo)
-        
-        # Time edit
+        client_layout.addWidget(self.client_search, 1)
+        client_layout.addWidget(self.client_combo, 1)
+        grid_layout.addLayout(client_layout, 1, 0, 1, 2)
+
+        # Hora y Repetición
+        grid_layout.addWidget(QLabel("Hora:"), 2, 0)
+        grid_layout.addWidget(QLabel("Repetición:"), 2, 1)
+        time_repeat_layout = QHBoxLayout()
         self.time_edit = QTimeEdit()
         self.time_edit.setTime(QTime(9, 0))
-        layout.addWidget(QLabel("Hora:"))
-        layout.addWidget(self.time_edit)
-
-        # Repeat combo box
         self.repeat_combo = QComboBox()
         self.repeat_combo.addItems(["No repetir", "Repetir semanalmente"])
-        layout.addWidget(QLabel("Repetición:"))
-        layout.addWidget(self.repeat_combo)
+        time_repeat_layout.addWidget(self.time_edit)
+        time_repeat_layout.addWidget(self.repeat_combo)
+        grid_layout.addLayout(time_repeat_layout, 3, 0, 1, 2)
 
-        # Confirmed checkbox
+        # Confirmado
         self.confirmed_checkbox = QCheckBox("Confirmado")
-        layout.addWidget(self.confirmed_checkbox)
+        grid_layout.addWidget(self.confirmed_checkbox, 4, 0, 1, 2)
 
-                # Service combo box (antes llamado Status)
+        # Servicio y Precio
+        grid_layout.addWidget(QLabel("Servicio:"), 5, 0)
+        grid_layout.addWidget(QLabel("Precio:"), 5, 1)
+        service_price_layout = QHBoxLayout()
         self.service_combo = QComboBox()
         self.service_combo.addItems(["Baño", "Corte", "Baño y corte"])
-        layout.addWidget(QLabel("Servicio:"))
-        layout.addWidget(self.service_combo)
-
-        # Price input con validador
         self.price_input = QLineEdit()
         self.price_input.setPlaceholderText("Precio")
         validator = QDoubleValidator(0.00, 9999999.99, 2)
         validator.setNotation(QDoubleValidator.StandardNotation)
         self.price_input.setValidator(validator)
-        layout.addWidget(QLabel("Precio:"))
-        layout.addWidget(self.price_input)
+        service_price_layout.addWidget(self.service_combo, 1)
+        service_price_layout.addWidget(self.price_input, 1)
+        grid_layout.addLayout(service_price_layout, 6, 0, 1, 2)
 
-
-
-        # Client comments display
+        # Comentarios del cliente
+        grid_layout.addWidget(QLabel("Comentarios del cliente:"), 7, 0, 1, 2)
         self.client_comments = QTextEdit()
         self.client_comments.setReadOnly(True)
         self.client_comments.setPlaceholderText("Comentarios del cliente")
-        self.client_comments.setStyleSheet("""
-            QTextEdit {
-                background-color: #f0f0f0;
-                border: 1px solid #d0d0d0;
-                border-radius: 5px;
-                padding: 5px;
-                color: #333333;
-            }
-        """)
-        layout.addWidget(QLabel("Comentarios del cliente:"))
-        layout.addWidget(self.client_comments)
+        self.client_comments.setMaximumHeight(100)
+        grid_layout.addWidget(self.client_comments, 8, 0, 1, 2)
 
-        # Notes input
+        # Notas del turno
+        grid_layout.addWidget(QLabel("Notas del turno:"), 9, 0, 1, 2)
         self.notes_input = QTextEdit()
         self.notes_input.setPlaceholderText("Notas del turno")
-        layout.addWidget(QLabel("Notas del turno:"))
-        layout.addWidget(self.notes_input)
+        self.notes_input.setMaximumHeight(100)
+        grid_layout.addWidget(self.notes_input, 10, 0, 1, 2)
 
-        # Button box
+        # Botones
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
         layout.addWidget(button_box)
+
+        # Cambiar el texto y los colores de los botones
+        ok_button = button_box.button(QDialogButtonBox.Ok)
+        ok_button.setText("Guardar")
+        ok_button.setStyleSheet("""
+            QPushButton {
+                background-color: #45a049;
+                color: white;
+                padding: 5px 15px;
+                border: none;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #3e8e41;
+            }
+        """)
+
+        cancel_button = button_box.button(QDialogButtonBox.Cancel)
+        cancel_button.setText("Cancelar")
+        cancel_button.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545;
+                color: white;
+                padding: 5px 15px;
+                border: none;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+            QPushButton:hover {
+                background-color: #c82333;
+            }
+        """)
 
         if appointment_id:
             self.load_appointment(appointment_id)
@@ -690,53 +719,33 @@ class AppointmentDialog(QDialog):
         # Conectar el cambio de cliente seleccionado a la actualización de comentarios
         self.client_combo.currentIndexChanged.connect(self.update_client_comments)
 
-        # Apply styles
+        # Aplicar estilos generales
         self.apply_styles()
 
     def apply_styles(self):
-        """Apply QSS styles to the widgets."""
-        style = """
-        QLabel {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        QLineEdit, QComboBox, QTimeEdit {
-            padding: 10px;
-            border: 1px solid #007bff;
-            border-radius: 5px;
-            background-color: #f8f9fa;
-            font-size: 14px;
-        }
-        QLineEdit:focus, QComboBox:focus, QTimeEdit:focus {
-            border: 1px solid #007bff;
-        }
-        QPushButton {
-            padding: 10px;
-            border: 2px solid #ccc;
-            border-radius: 5px;
-            background-color: #007bff;
-            color: white;
-        }
-        QPushButton:hover {
-            background-color: #0056b3;
-        }
-        QPushButton:pressed {
-            background-color: #004085;
-        }
-
-        /* Estilo específico para el botón Eliminar */
-        QPushButton#delete_button {
-            background-color: #dc3545; /* Rojo */
-            border-color: #dc3545;
-        }
-        QPushButton#delete_button:hover {
-            background-color: #c82333;
-        }
-        QPushButton#delete_button:pressed {
-            background-color: #bd2130;
-        }
-        """
-        self.setStyleSheet(style)
+        self.setStyleSheet("""
+            QLabel {
+                font-weight: bold;
+                font-size: 14px;
+            }
+            QLineEdit, QComboBox, QTimeEdit {
+                padding: 5px;
+                border: 1px solid #3498db;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+            QTextEdit {
+                border: 1px solid #3498db;
+                border-radius: 3px;
+                font-size: 14px;
+            }
+            QTextEdit[readOnly="true"] {
+                background-color: #f0f0f0;
+            }
+            QCheckBox {
+                font-size: 14px;
+            }
+        """)
 
     def update_client_comments(self):
         client_id = self.client_combo.currentData()

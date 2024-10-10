@@ -107,9 +107,9 @@ class ClientListWidget(QWidget):
         self.search_timer.timeout.connect(self.search_clients)
 
         # Uncomment for testing
-        self.test_button = QPushButton("Test")
-        self.test_button.clicked.connect(self.create_random_clients)
-        layout.addWidget(self.test_button)
+        # self.test_button = QPushButton("Test")
+        # self.test_button.clicked.connect(self.create_random_clients)
+        # layout.addWidget(self.test_button)
 
         # Load clients when initialized
         self.load_clients()
@@ -312,70 +312,82 @@ class ClientEditDialog(QDialog):
         super().__init__()
         self.client_id = client_id
         self.setWindowTitle("Editar Cliente")
-        layout = QVBoxLayout()
-        self.setLayout(layout)
+        self.setMinimumWidth(600)
+        main_layout = QVBoxLayout()
+        self.setLayout(main_layout)
 
-        # Load client data
+        # Cargar datos del cliente
         self.session = Session()
         self.client = self.session.query(Client).get(client_id)
 
-        # Input fields with client data
+        # Crear un grid layout para los campos de entrada
+        grid_layout = QGridLayout()
+        grid_layout.setColumnStretch(0, 1)
+        grid_layout.setColumnStretch(1, 1)
+
+        # Campos de entrada con datos del cliente
         self.lastname_input = QLineEdit(self.client.lastname)
         self.name_input = QLineEdit(self.client.name)
         self.address_input = QLineEdit(self.client.address)
         self.phone_input = QLineEdit(self.client.phone)
         self.dog_name_input = QLineEdit(self.client.dog_name)
 
-        # Breed combo box
+        # Combo box para la raza
         self.breed_combo = QComboBox()
         self.load_breeds()
         self.breed_combo.setCurrentText(self.client.breed)
 
-        # Nuevo campo para raza personalizada
+        # Campo para raza personalizada
         self.custom_breed_input = QLineEdit()
         self.custom_breed_input.setPlaceholderText("Ingrese una raza personalizada")
         self.custom_breed_input.setVisible(False)
 
-        # Comments section
+        # Sección de comentarios
         self.comments_input = QTextEdit(self.client.comments)
 
-        # Adding labels and fields to layout
-        layout.addWidget(QLabel("Apellido:"))
-        layout.addWidget(self.lastname_input)
-        layout.addWidget(QLabel("Nombre:"))
-        layout.addWidget(self.name_input)
-        layout.addWidget(QLabel("Dirección:"))
-        layout.addWidget(self.address_input)
-        layout.addWidget(QLabel("Teléfono:"))
-        layout.addWidget(self.phone_input)
-        layout.addWidget(QLabel("Nombre del perro:"))
-        layout.addWidget(self.dog_name_input)
-        layout.addWidget(QLabel("Raza:"))
-        layout.addWidget(self.breed_combo)
-        layout.addWidget(self.custom_breed_input)
-        layout.addWidget(QLabel("Comentarios:"))
-        layout.addWidget(self.comments_input)
+        # Añadir etiquetas y campos al grid layout
+        grid_layout.addWidget(QLabel("Apellido:"), 0, 0)
+        grid_layout.addWidget(self.lastname_input, 1, 0)
+        grid_layout.addWidget(QLabel("Nombre:"), 0, 1)
+        grid_layout.addWidget(self.name_input, 1, 1)
 
-        # OK/Cancel buttons
+        grid_layout.addWidget(QLabel("Dirección:"), 2, 0, 1, 2)
+        grid_layout.addWidget(self.address_input, 3, 0, 1, 2)
+        grid_layout.addWidget(QLabel("Teléfono:"), 4, 0, 1, 2)
+        grid_layout.addWidget(self.phone_input, 5, 0, 1, 2)
+
+        grid_layout.addWidget(QLabel("Nombre del perro:"), 6, 0)
+        grid_layout.addWidget(self.dog_name_input, 7, 0)
+        grid_layout.addWidget(QLabel("Raza:"), 6, 1)
+        grid_layout.addWidget(self.breed_combo, 7, 1)
+
+        grid_layout.addWidget(self.custom_breed_input, 8, 0, 1, 2)
+
+        grid_layout.addWidget(QLabel("Comentarios:"), 9, 0, 1, 2)
+        grid_layout.addWidget(self.comments_input, 10, 0, 1, 2)
+
+        main_layout.addLayout(grid_layout)
+
+        # Botones OK/Cancelar
         button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(self.accept)
         button_box.rejected.connect(self.reject)
-        layout.addWidget(button_box)
+        main_layout.addWidget(button_box)
         
-        # Apply object names to buttons in the button box
+        # Aplicar nombres de objeto a los botones en el button box
         button_box.button(QDialogButtonBox.Ok).setObjectName("ok-button")
         button_box.button(QDialogButtonBox.Cancel).setObjectName("cancel-button")
 
-        # Delete button
+        # Botón Eliminar
         delete_button = QPushButton("Eliminar Cliente")
         delete_button.clicked.connect(self.delete_client)
         delete_button.setObjectName("delete-button")
-        layout.addWidget(delete_button)
+        main_layout.addWidget(delete_button)
 
         # Conectar la señal de cambio en el combo box
         self.breed_combo.currentTextChanged.connect(self.on_breed_changed)
 
-        # Apply styles
+        # Aplicar estilos
         self.apply_styles(button_box)
 
     def apply_styles(self, button_box):
