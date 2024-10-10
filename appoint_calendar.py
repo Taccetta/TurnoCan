@@ -1,3 +1,4 @@
+import logging
 import datetime
 import random
 import string
@@ -15,6 +16,24 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt, QTime, QDate, QPoint, QSize
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter, QPen
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
+from logging.handlers import RotatingFileHandler
+
+def setup_logger():
+    logger = logging.getLogger('appoint_calendar')
+    logger.setLevel(logging.INFO)
+    
+    # Configurar el RotatingFileHandler
+    file_handler = RotatingFileHandler(
+        'appointment_operations.log',
+        maxBytes=1024 * 1024,  # 1 MB
+        backupCount=1
+    )
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_logger()
 
 
 class CustomSplitterHandle(QSplitterHandle):
@@ -189,6 +208,8 @@ class AppointmentCalendarWidget(QWidget):
         # Apply styles
         self.apply_styles()
 
+        logger.info("AppointmentCalendarWidget inicializado")
+
     def apply_styles(self):
         """Apply QSS styles to the widgets."""
         style = """
@@ -323,6 +344,7 @@ class AppointmentCalendarWidget(QWidget):
     def load_appointments(self):
         self.appointment_list.clear()
         selected_date = self.calendar.selectedDate().toPyDate()
+        logger.info(f"Cargando turnos para la fecha: {selected_date}")
         session = Session()
         appointments = session.query(Appointment).filter(Appointment.date == selected_date).order_by(Appointment.time).all()
         
@@ -423,6 +445,7 @@ class AppointmentCalendarWidget(QWidget):
             self.appointment_list.setItemWidget(list_item, item_widget)
         
         session.close()
+        logger.info(f"Se cargaron {len(appointments)} turnos para la fecha {selected_date}")
 
     def adjust_time(self, appointment_id, minutes):
         session = Session()
@@ -436,6 +459,7 @@ class AppointmentCalendarWidget(QWidget):
         self.update_calendar()
 
     def toggle_confirmation(self, appointment_id, state):
+        logger.info(f"Cambiando estado de confirmación del turno ID {appointment_id} a {'confirmado' if state == Qt.Checked else 'no confirmado'}")
         session = Session()
         appointment = session.query(Appointment).get(appointment_id)
         appointment.confirmed = state == Qt.Checked
@@ -477,7 +501,10 @@ class AppointmentCalendarWidget(QWidget):
         finally:
             session.close()
 
+        logger.info(f"Actualizando calendario para el mes: {current_date.month()}/{current_date.year()}")
+
     def create_appointment(self):
+        logger.info("Iniciando creación de nuevo turno")
         session = Session()
         clients = session.query(Client).all()
         session.close()
@@ -488,16 +515,21 @@ class AppointmentCalendarWidget(QWidget):
         
         dialog = AppointmentDialog(self.calendar.selectedDate().toPyDate())
         if dialog.exec_():
+            logger.info("Nuevo turno creado exitosamente")
             self.load_appointments()
             self.update_calendar()
+        else:
+            logger.info("Creación de turno cancelada")
 
     def edit_appointment(self, appointment_id):
+        logger.info(f"Editando turno con ID: {appointment_id}")
         dialog = AppointmentDialog(self.calendar.selectedDate().toPyDate(), appointment_id)
         if dialog.exec_():
             self.load_appointments()
             self.update_calendar()
 
     def delete_appointment(self, appointment_id):
+        logger.info(f"Intentando eliminar turno con ID: {appointment_id}")
         confirm = QMessageBox.question(self, "Confirmar Eliminación", 
                                        "¿Está seguro de que desea eliminar este turno?",
                                        QMessageBox.Yes | QMessageBox.No)
@@ -507,6 +539,7 @@ class AppointmentCalendarWidget(QWidget):
             session.delete(appointment)
             session.commit()
             session.close()
+            logger.info(f"Turno con ID {appointment_id} eliminado exitosamente")
             self.load_appointments()
             self.update_calendar()
 
@@ -518,12 +551,14 @@ class AppointmentCalendarWidget(QWidget):
             self.toggle_list_btn.setText("⮘ Mostrar Lista")
     
     def print_appointments(self):
+        logger.info("Iniciando impresión de turnos")
         dialog = PrintAppointmentsDialog(self.calendar.selectedDate().toPyDate())
         dialog.exec_()
 
     def repeat_weekly_appointments(self):
         current_date = self.calendar.selectedDate()
         next_week = current_date.addDays(7)
+        logger.info(f"Repitiendo turnos semanales del {current_date.toString('dd/MM/yyyy')} al {next_week.toString('dd/MM/yyyy')}")
         session = Session()
         appointments_to_repeat = session.query(Appointment).filter(
             Appointment.date == current_date.toPyDate(),
@@ -549,6 +584,7 @@ class AppointmentCalendarWidget(QWidget):
 
         session.commit()
         session.close()
+        logger.info(f"Se repitieron {len(appointments_to_repeat)} turnos para la semana siguiente")
         self.load_appointments()
         self.update_calendar()
  
@@ -577,6 +613,8 @@ class PrintAppointmentsDialog(QDialog):
 
         self.load_appointments()
 
+        logger.info(f"Abriendo diálogo de impresión para la fecha: {date}")
+
     def load_appointments(self):
         session = Session()
         appointments = session.query(Appointment).filter(Appointment.date == self.date).order_by(Appointment.time).all()
@@ -597,6 +635,7 @@ class PrintAppointmentsDialog(QDialog):
         session.close()
 
     def print(self):
+        logger.info(f"Imprimiendo turnos para la fecha: {self.date}")
         printer = QPrinter()
         dialog = QPrintDialog()
         if dialog.exec_() == QDialog.Accepted:
@@ -722,6 +761,8 @@ class AppointmentDialog(QDialog):
         # Aplicar estilos generales
         self.apply_styles()
 
+        logger.info(f"Abriendo diálogo de {'edición' if appointment_id else 'creación'} de turno para la fecha: {date}")
+
     def apply_styles(self):
         self.setStyleSheet("""
             QLabel {
@@ -774,6 +815,7 @@ class AppointmentDialog(QDialog):
             session.close()
 
     def load_appointment(self, appointment_id):
+        logger.info(f"Cargando datos del turno con ID: {appointment_id}")
         session = Session()
         appointment = session.query(Appointment).get(appointment_id)
         self.time_edit.setTime(appointment.time)
@@ -850,14 +892,17 @@ class AppointmentDialog(QDialog):
 
         try:
             session.commit()
+            logger.info(f"Turno {'actualizado' if self.appointment_id else 'creado'} exitosamente")
             session.close()
             super().accept()
         except Exception as e:
+            logger.error(f"Error al {'actualizar' if self.appointment_id else 'crear'} turno: {str(e)}")
             QMessageBox.critical(self, "Error", f"No se pudo guardar el turno: {str(e)}")
             session.rollback()
             session.close()
 
     def delete_appointment(self):
+        logger.info(f"Intentando eliminar turno con ID: {self.appointment_id}")
         confirm = QMessageBox.question(self, "Confirmar Eliminación", 
                                        "¿Está seguro de que desea eliminar este turno?",
                                        QMessageBox.Yes | QMessageBox.No)
@@ -867,4 +912,5 @@ class AppointmentDialog(QDialog):
             session.delete(appointment)
             session.commit()
             session.close()
+            logger.info(f"Turno con ID {self.appointment_id} eliminado exitosamente")
             self.accept()

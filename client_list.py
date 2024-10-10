@@ -10,6 +10,25 @@ from database import Session, Client, Appointment, Breed
 import datetime
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 import string, random
+import logging
+from logging.handlers import RotatingFileHandler
+
+def setup_logger():
+    logger = logging.getLogger('client_list')
+    logger.setLevel(logging.INFO)
+    
+    # Configurar el RotatingFileHandler
+    file_handler = RotatingFileHandler(
+        'client_operations.log',
+        maxBytes=1024 * 1024,  # 1 MB
+        backupCount=1
+    )
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_logger()
 
 
 class ClientListWidget(QWidget):
@@ -117,6 +136,8 @@ class ClientListWidget(QWidget):
         # Apply styles
         self.apply_styles()
 
+        logger.info("ClientListWidget inicializado")
+
     def on_search_text_changed(self):
         self.search_timer.stop()
         self.search_timer.start(300)
@@ -205,6 +226,8 @@ class ClientListWidget(QWidget):
         self.update_client_count()
         self.update_sort_indicator()  # Añadir esta línea
 
+        logger.info(f"Cargando clientes. Búsqueda: '{search_term}', Página: {self.current_page}, Items por página: {self.items_per_page}")
+
     def get_column_name(self, column_index):
         column_names = ['lastname', 'name', 'address', 'phone', 'dog_name', 'breed', 'comments']
         return column_names[column_index]
@@ -260,11 +283,13 @@ class ClientListWidget(QWidget):
 
     def edit_client(self, item):
         client_id = item.data(Qt.UserRole)
+        logger.info(f"Editando cliente con ID: {client_id}")
         dialog = ClientEditDialog(client_id)
         if dialog.exec_() == QDialog.Accepted:
             self.load_clients(self.current_search)
 
     def create_random_clients(self):
+        logger.info("Creando 100 clientes aleatorios")
         session = Session()
         for _ in range(100):
             lastname = self.get_random_string(8)
@@ -288,6 +313,7 @@ class ClientListWidget(QWidget):
         session.commit()
         session.close()
         self.load_clients()
+        logger.info("100 clientes aleatorios creados exitosamente")
 
     def get_random_string(self, length):
         letters = string.ascii_lowercase
@@ -389,6 +415,8 @@ class ClientEditDialog(QDialog):
 
         # Aplicar estilos
         self.apply_styles(button_box)
+
+        logger.info(f"Abriendo diálogo de edición para el cliente con ID: {client_id}")
 
     def apply_styles(self, button_box):
         """Apply QSS styles to the widgets."""
@@ -500,10 +528,14 @@ class ClientEditDialog(QDialog):
             self.client.breed = breed
             self.client.comments = self.comments_input.toPlainText()
             self.session.commit()
+            logger.info(f"Actualizando datos del cliente con ID: {self.client_id}")
+            logger.info(f"Cliente con ID {self.client_id} actualizado exitosamente")
             super().accept()
         except ValueError as e:
+            logger.error(f"Error al actualizar cliente con ID {self.client_id}: {str(e)}")
             QMessageBox.critical(self, "Error", str(e))
         except Exception as e:
+            logger.error(f"Error inesperado al actualizar cliente con ID {self.client_id}: {str(e)}")
             QMessageBox.critical(self, "Error", f"Ocurrió un error al guardar los cambios: {str(e)}")
 
     def delete_client(self):
@@ -512,6 +544,7 @@ class ClientEditDialog(QDialog):
                                        QMessageBox.Yes | QMessageBox.No)
         if confirm == QMessageBox.Yes:
             try:
+                logger.info(f"Eliminando cliente con ID: {self.client_id}")
                 future_appointments = self.session.query(Appointment).filter(
                     Appointment.client_id == self.client_id,
                     Appointment.date >= datetime.date.today()
@@ -521,8 +554,10 @@ class ClientEditDialog(QDialog):
                 
                 self.session.delete(self.client)
                 self.session.commit()
+                logger.info(f"Cliente con ID {self.client_id} y sus turnos futuros eliminados exitosamente")
                 super().accept()
             except Exception as e:
+                logger.error(f"Error al eliminar cliente con ID {self.client_id}: {str(e)}")
                 QMessageBox.critical(self, "Error", f"No se pudo eliminar el cliente: {str(e)}")
             finally:
                 self.session.close()

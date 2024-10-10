@@ -1,3 +1,5 @@
+import logging
+from logging.handlers import RotatingFileHandler
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, QLineEdit, 
                              QScrollArea, QFormLayout, QTextEdit, QMessageBox, QComboBox, 
                              QGraphicsDropShadowEffect)
@@ -5,6 +7,22 @@ from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QColor, QFont
 from database import Session, Client, Breed
 
+def setup_logger():
+    logger = logging.getLogger('create_client')
+    logger.setLevel(logging.INFO)
+    
+    # Configurar el RotatingFileHandler
+    file_handler = RotatingFileHandler(
+        'create_client_operations.log',
+        maxBytes=1024 * 1024,  # 1 MB
+        backupCount=1
+    )
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_logger()
 
 class CreateClientWidget(QWidget):
     def __init__(self):
@@ -67,6 +85,8 @@ class CreateClientWidget(QWidget):
         # Apply QSS styles
         self.apply_styles(create_client_btn)
 
+        logger.info("CreateClientWidget inicializado")
+
     def apply_styles(self, button):
         """Apply QSS styles to widgets."""
         style = """
@@ -118,15 +138,19 @@ class CreateClientWidget(QWidget):
         shadow.setColor(QColor(0, 0, 0, 80))
         button.setGraphicsEffect(shadow)
 
+        logger.info("Estilos aplicados a CreateClientWidget")
+
     def load_breeds(self):
         session = Session()
         breeds = session.query(Breed).order_by(Breed.name).all()
         for breed in breeds:
             self.breed_combo.addItem(breed.name)
         session.close()
+        logger.info(f"Razas cargadas: {len(breeds)} razas encontradas")
 
     def on_breed_changed(self, text):
         self.custom_breed_input.setVisible(text == "Otro")
+        logger.info(f"Raza seleccionada: {text}")
 
     def create_client(self):
         # Verificar campos obligatorios
@@ -141,6 +165,7 @@ class CreateClientWidget(QWidget):
         missing_fields = [field[1] for field in required_fields if not field[0]]
 
         if missing_fields:
+            logger.warning(f"Intento de crear cliente con campos faltantes: {', '.join(missing_fields)}")
             QMessageBox.warning(
                 self, 
                 "Error", 
@@ -153,12 +178,14 @@ class CreateClientWidget(QWidget):
         if breed == "Otro":
             breed = self.custom_breed_input.text().strip()
             if not breed:
+                logger.warning("Intento de crear cliente con raza personalizada vacía")
                 QMessageBox.warning(self, "Error", "Por favor, ingrese una raza personalizada.")
                 session.close()
                 return
             breed = breed.capitalize()
             existing_breed = session.query(Breed).filter(Breed.name.ilike(breed)).first()
             if existing_breed:
+                logger.info(f"Raza personalizada '{breed}' ya existe en el listado")
                 QMessageBox.warning(
                     self, 
                     "Advertencia", 
@@ -168,12 +195,14 @@ class CreateClientWidget(QWidget):
                 new_breed = Breed(name=breed)
                 session.add(new_breed)
                 session.commit()
+                logger.info(f"Nueva raza '{breed}' añadida al listado")
                 self.breed_combo.clear()
                 self.breed_combo.addItem("Seleccione una raza")
                 self.breed_combo.addItem("Otro")
                 self.load_breeds()
                 self.breed_combo.setCurrentText(breed)
         elif breed == "Seleccione una raza":
+            logger.warning("Intento de crear cliente sin seleccionar una raza")
             QMessageBox.warning(self, "Error", "Por favor, seleccione una raza.")
             session.close()
             return
@@ -189,6 +218,7 @@ class CreateClientWidget(QWidget):
         )
         session.add(new_client)
         session.commit()
+        logger.info(f"Nuevo cliente creado: {new_client.lastname} {new_client.name}")
         session.close()
         QMessageBox.information(self, "Éxito", "Cliente creado correctamente.")
         self.clear_fields()
@@ -202,3 +232,4 @@ class CreateClientWidget(QWidget):
         self.breed_combo.setCurrentIndex(0)
         self.custom_breed_input.clear()
         self.comments_input.clear()
+        logger.info("Campos del formulario de creación de cliente limpiados")

@@ -1,3 +1,5 @@
+import logging
+from logging.handlers import RotatingFileHandler
 from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, 
                              QCalendarWidget, QCheckBox, QMessageBox, QComboBox, QSlider, 
                              QTimeEdit, QListWidget, QDialog, QDialogButtonBox, QTextEdit,
@@ -8,6 +10,23 @@ from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
 from sqlalchemy import or_, desc, String, cast, Date, Time, extract, and_
 from database import Session, Appointment, Client
 import datetime
+
+def setup_logger():
+    logger = logging.getLogger('appointment_search')
+    logger.setLevel(logging.INFO)
+    
+    # Configurar el RotatingFileHandler
+    file_handler = RotatingFileHandler(
+        'appointment_search_operations.log',
+        maxBytes=1024 * 1024,  # 1 MB
+        backupCount=1
+    )
+    formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+    file_handler.setFormatter(formatter)
+    logger.addHandler(file_handler)
+    return logger
+
+logger = setup_logger()
 
 class AppointmentSearchWidget(QWidget):
     def __init__(self):
@@ -109,6 +128,8 @@ class AppointmentSearchWidget(QWidget):
         # Apply styles
         self.apply_styles()
 
+        logger.info("AppointmentSearchWidget inicializado")
+
     def on_search_text_changed(self):
         self.search_timer.stop()
         self.search_timer.start(300)
@@ -117,6 +138,7 @@ class AppointmentSearchWidget(QWidget):
         self.current_search = self.search_input.text()
         self.current_page = 1
         self.load_appointments(self.current_search)
+        logger.info(f"Búsqueda de turnos realizada con término: '{self.current_search}'")
 
     def apply_styles(self):
         """Apply QSS styles to widgets."""
@@ -150,6 +172,7 @@ class AppointmentSearchWidget(QWidget):
         self.setStyleSheet(style)
 
     def load_appointments(self, search_term=None):
+        logger.info(f"Cargando turnos. Término de búsqueda: '{search_term}', Página: {self.current_page}")
         self.appointment_table.setRowCount(0)
         session = Session()
         query = session.query(Appointment).join(Client)
@@ -220,6 +243,7 @@ class AppointmentSearchWidget(QWidget):
         return column_names[column_index]
 
     def sort_table(self, column):
+        logger.info(f"Ordenando tabla por columna: {column}")
         if column == self.current_sort_column:
             # Cambiar el orden si se hace clic en la misma columna
             self.current_sort_order = Qt.DescendingOrder if self.current_sort_order == Qt.AscendingOrder else Qt.AscendingOrder
@@ -257,23 +281,29 @@ class AppointmentSearchWidget(QWidget):
         if self.current_page > 1:
             self.current_page -= 1
             self.load_appointments(self.current_search)
+            logger.info(f"Navegando a la página anterior: {self.current_page}")
 
     def next_page(self):
         if self.current_page < self.total_pages:
             self.current_page += 1
             self.load_appointments(self.current_search)
+            logger.info(f"Navegando a la página siguiente: {self.current_page}")
 
     def change_items_per_page(self, value):
         self.items_per_page = int(value)
         self.current_page = 1
         self.load_appointments(self.current_search)
+        logger.info(f"Cambiando items por página a: {self.items_per_page}")
 
     def view_appointment(self, item):
         appointment_id = item.data(Qt.UserRole)
+        logger.info(f"Visualizando turno con ID: {appointment_id}")
         dialog = AppointmentViewDialog(appointment_id)
         dialog.exec_()
 
     def toggle_stretch_mode(self, state):
+        mode = "Stretch" if state == Qt.Checked else "Interactive"
+        logger.info(f"Cambiando modo de ajuste de columnas a: {mode}")
         if state == Qt.Checked:
             self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         else:
@@ -326,6 +356,8 @@ class AppointmentViewDialog(QDialog):
         # Apply styles
         self.apply_styles()
 
+        logger.info(f"Abriendo diálogo de visualización para el turno con ID: {appointment_id}")
+
     def apply_styles(self):
         """Apply QSS styles to the widgets."""
         style = """
@@ -359,3 +391,7 @@ class AppointmentViewDialog(QDialog):
         }
         """
         self.setStyleSheet(style)
+
+    def accept(self):
+        logger.info(f"Cerrando diálogo de visualización para el turno con ID: {self.appointment_id}")
+        super().accept()
