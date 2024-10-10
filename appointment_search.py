@@ -39,6 +39,27 @@ class AppointmentSearchWidget(QWidget):
         self.appointment_table.setColumnCount(8)
         self.appointment_table.setHorizontalHeaderLabels(["Fecha", "Hora", "Cliente", "Perro", "Estado", "Precio", "Confirmado", "Notas"])
         self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.appointment_table.setAlternatingRowColors(True)
+        self.appointment_table.setStyleSheet("""
+            QTableWidget {
+                background-color: #ffffff;
+                alternate-background-color: #f2f2f2;
+                gridline-color: #d3d3d3;
+            }
+            QHeaderView::section {
+                background-color: #4CAF50;
+                color: white;
+                padding: 4px;
+                font-weight: bold;
+            }
+            QTableWidget::item:selected {
+                background-color: #a0a0a0;
+                color: white;
+            }
+            QHeaderView::section:selected {
+                background-color: #388E3C;
+            }
+        """)
         self.appointment_table.horizontalHeader().sectionClicked.connect(self.sort_table)
         self.appointment_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.appointment_table.doubleClicked.connect(self.view_appointment)
@@ -58,6 +79,7 @@ class AppointmentSearchWidget(QWidget):
         pagination_layout.addWidget(self.prev_button)
         pagination_layout.addWidget(self.page_label)
         pagination_layout.addWidget(self.next_button)
+        pagination_layout.addStretch()
         pagination_layout.addWidget(QLabel("Items por página:"))
         pagination_layout.addWidget(self.items_per_page_combo)
         layout.addLayout(pagination_layout)
@@ -105,30 +127,24 @@ class AppointmentSearchWidget(QWidget):
             border-radius: 5px;
         }
         QPushButton {
-            background-color: #007bff;
+            background-color: #4CAF50;
             color: white;
             padding: 8px 12px;
             border: none;
             border-radius: 5px;
+            margin: 2px;
         }
         QPushButton:hover {
-            background-color: #0056b3;
+            background-color: #45a049;
         }
         QPushButton:pressed {
-            background-color: #004085;
+            background-color: #388E3C;
         }
-        QTableWidget {
+        QListWidget {
             border: 1px solid #ced4da;
             border-radius: 5px;
             padding: 5px;
             background-color: white;
-        }
-        QCheckBox {
-            padding: 5px;
-        }
-        QCheckBox::indicator {
-            width: 18px;
-            height: 18px;
         }
         """
         self.setStyleSheet(style)
@@ -297,14 +313,21 @@ class AppointmentViewDialog(QDialog):
 
         session.close()
 
-        # Botón de cerrar
+        # Botones
+        button_layout = QHBoxLayout()
+        
         close_button = QPushButton("Cerrar")
         close_button.clicked.connect(self.accept)
-        layout.addWidget(close_button, 8, 0, 1, 2)
+        close_button.setObjectName("close-button")
+        button_layout.addWidget(close_button)
 
+        layout.addLayout(button_layout, 8, 1)
+
+        # Apply styles
         self.apply_styles()
 
     def apply_styles(self):
+        """Apply QSS styles to the widgets."""
         style = """
         QLabel {
             font-size: 12px;
@@ -316,16 +339,23 @@ class AppointmentViewDialog(QDialog):
             border: 1px solid #ced4da;
             border-radius: 5px;
             padding: 5px;
+            background-color: #ffffff;
         }
         QPushButton {
-            background-color: #007bff;
+            background-color: #4CAF50;
             color: white;
             padding: 8px 12px;
             border: none;
             border-radius: 5px;
         }
         QPushButton:hover {
-            background-color: #0056b3;
+            background-color: #45a049;
+        }
+        QPushButton:pressed {
+            background-color: #388E3C;
+        }
+        QDialog {
+            background-color: #f5f5f5;
         }
         """
         self.setStyleSheet(style)

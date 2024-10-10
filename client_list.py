@@ -42,6 +42,27 @@ class ClientListWidget(QWidget):
         self.client_table.setColumnCount(7)
         self.client_table.setHorizontalHeaderLabels(["Apellido", "Nombre", "Dirección", "Teléfono", "Perro", "Raza", "Comentarios"])
         self.client_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.client_table.setAlternatingRowColors(True)
+        self.client_table.setStyleSheet("""
+            QTableWidget {
+                background-color: #ffffff;
+                alternate-background-color: #f2f2f2;
+                gridline-color: #d3d3d3;
+            }
+            QHeaderView::section {
+                background-color: #4CAF50;
+                color: white;
+                padding: 4px;
+                font-weight: bold;
+            }
+            QTableWidget::item:selected {
+                background-color: #a0a0a0;
+                color: white;
+            }
+            QHeaderView::section:selected {
+                background-color: #388E3C;
+            }
+        """)
         self.client_table.horizontalHeader().sectionClicked.connect(self.sort_table)
         self.client_table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.client_table.doubleClicked.connect(self.edit_client)
@@ -61,6 +82,7 @@ class ClientListWidget(QWidget):
         pagination_layout.addWidget(self.prev_button)
         pagination_layout.addWidget(self.page_label)
         pagination_layout.addWidget(self.next_button)
+        pagination_layout.addStretch()
         pagination_layout.addWidget(QLabel("Items por página:"))
         pagination_layout.addWidget(self.items_per_page_combo)
         layout.addLayout(pagination_layout)
@@ -113,17 +135,18 @@ class ClientListWidget(QWidget):
             border-radius: 5px;
         }
         QPushButton {
-            background-color: #007bff;
+            background-color: #4CAF50;
             color: white;
             padding: 8px 12px;
             border: none;
             border-radius: 5px;
+            margin: 2px;
         }
         QPushButton:hover {
-            background-color: #0056b3;
+            background-color: #45a049;
         }
         QPushButton:pressed {
-            background-color: #004085;
+            background-color: #388E3C;
         }
         QListWidget {
             border: 1px solid #ced4da;
@@ -283,6 +306,7 @@ class ClientListWidget(QWidget):
         else:
             self.client_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
+
 class ClientEditDialog(QDialog):
     def __init__(self, client_id):
         super().__init__()
@@ -309,6 +333,7 @@ class ClientEditDialog(QDialog):
 
         # Nuevo campo para raza personalizada
         self.custom_breed_input = QLineEdit()
+        self.custom_breed_input.setPlaceholderText("Ingrese una raza personalizada")
         self.custom_breed_input.setVisible(False)
 
         # Comments section
@@ -360,6 +385,7 @@ class ClientEditDialog(QDialog):
             padding: 8px;
             border: 1px solid #ced4da;
             border-radius: 5px;
+            background-color: #ffffff;
         }
         QLabel {
             font-weight: bold;
@@ -369,21 +395,44 @@ class ClientEditDialog(QDialog):
             padding: 8px;
             border: 2px solid #ccc;
             border-radius: 5px;
+            min-width: 100px;
         }
         QPushButton#ok-button {
             background-color: #28a745; /* Green for OK */
             color: white;
             border: 2px solid #28a745;
         }
+        QPushButton#ok-button:hover {
+            background-color: #218838;
+        }
+        QPushButton#ok-button:pressed {
+            background-color: #1e7e34;
+        }
         QPushButton#cancel-button {
             background-color: #ffc107; /* Yellow for Cancel */
             color: white;
             border: 2px solid #ffc107;
         }
+        QPushButton#cancel-button:hover {
+            background-color: #e0a800;
+        }
+        QPushButton#cancel-button:pressed {
+            background-color: #d39e00;
+        }
         QPushButton#delete-button {
             background-color: #dc3545; /* Red for Delete */
             color: white;
             border: 2px solid #dc3545;
+            margin-top: 10px;
+        }
+        QPushButton#delete-button:hover {
+            background-color: #c82333;
+        }
+        QPushButton#delete-button:pressed {
+            background-color: #bd2130;
+        }
+        QDialog {
+            background-color: #f5f5f5;
         }
         """
         self.setStyleSheet(style)
@@ -432,7 +481,7 @@ class ClientEditDialog(QDialog):
             # Actualizar los datos del cliente
             self.client.lastname = self.lastname_input.text().strip().capitalize()
             self.client.name = self.name_input.text().strip().capitalize()
-            self.client.address = self.address_input.text().strip()
+            self.client.address = self.address_input.text().strip().capitalize()
             self.client.phone = self.phone_input.text().strip()
             self.client.dog_name = self.dog_name_input.text().strip().capitalize()
             

@@ -90,18 +90,90 @@ class AppointmentCalendarWidget(QWidget):
 
         create_appointment_btn = QPushButton("Crear Turno")
         create_appointment_btn.clicked.connect(self.create_appointment)
+        create_appointment_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #45a049;
+                border: none;
+                color: white;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3e8e41;
+            }
+            QPushButton:pressed {
+                background-color: #367c39;
+            }
+        """)
         buttons_layout.addWidget(create_appointment_btn)
 
         self.toggle_calendar_btn = QPushButton("Ocultar Calendario")
         self.toggle_calendar_btn.clicked.connect(self.toggle_calendar)
+        self.toggle_calendar_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #45a049;
+                border: none;
+                color: white;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3e8e41;
+            }
+            QPushButton:pressed {
+                background-color: #367c39;
+            }
+        """)
         buttons_layout.addWidget(self.toggle_calendar_btn)
 
         repeat_weekly_btn = QPushButton("Repetir Turnos Semanalmente")
         repeat_weekly_btn.clicked.connect(self.repeat_weekly_appointments)
+        repeat_weekly_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #45a049;
+                border: none;
+                color: white;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3e8e41;
+            }
+            QPushButton:pressed {
+                background-color: #367c39;
+            }
+        """)
         buttons_layout.addWidget(repeat_weekly_btn)
 
         print_btn = QPushButton("Imprimir")
         print_btn.clicked.connect(self.print_appointments)
+        print_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #45a049;
+                border: none;
+                color: white;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3e8e41;
+            }
+            QPushButton:pressed {
+                background-color: #367c39;
+            }
+        """)
         buttons_layout.addWidget(print_btn)
 
         layout.addLayout(buttons_layout)
@@ -122,23 +194,30 @@ class AppointmentCalendarWidget(QWidget):
         style = """
         QCalendarWidget {
             border: 1px solid #ced4da;
-            border-radius: 5px;
-            background-color: #f8f9fa;
+            border-radius: 10px;
+            background-color: #ffffff;
+            font-size: 14px;
+        }
+        QCalendarWidget QAbstractItemView::selected {
+            background-color: #45a049;
+            color: white;
         }
         QListWidget {
             border: 1px solid #ced4da;
-            border-radius: 5px;
-            padding: 5px;
-            background-color: white;
+            border-radius: 10px;
+            padding: 10px;
+            background-color: #ffffff;
+            font-size: 14px;
         }
         QListWidget::item:nth-child(even) {
-            background-color: #f8f9fa;
+            background-color: #f9f9f9;
         }
         QListWidget::item:nth-child(odd) {
             background-color: #e9ecef;
         }
         QCheckBox {
             spacing: 5px;
+            font-size: 14px;
         }
         QCheckBox::indicator {
             width: 18px;
@@ -148,68 +227,43 @@ class AppointmentCalendarWidget(QWidget):
             background-color: white;
         }
         QCheckBox::indicator:checked {
-            background-color: #28a745;
-            border-color: #28a745;
+            background-color: #45a049;
+            border-color: #45a049;
             image: url(checkmark.png);
         }
         QPushButton {
-            padding: 2px;
-            border: 2px solid #007bff;
+            padding: 10px 20px;
+            border: none;
             border-radius: 5px;
-            background-color: #007bff;
+            background-color: #45a049;
             color: white;
+            font-size: 14px;
         }
         QPushButton:hover {
-            background-color: #0056b3;
+            background-color: #3e8e41;
         }
         QPushButton:pressed {
-            background-color: #004085;
+            background-color: #367c39;
         }
         QPushButton#create_appointment_btn {
-            background-color: #28a745; /* Green */
-            border-color: #28a745;
-        }
-        QPushButton#create_appointment_btn:hover {
-            background-color: #218838;
-        }
-        QPushButton#create_appointment_btn:pressed {
-            background-color: #1e7e34;
+            background-color: #45a049; /* Green */
         }
         QPushButton#toggle_list_btn {
-            background-color: #ffc107; /* Yellow */
-            border-color: #ffc107;
-        }
-        QPushButton#toggle_list_btn:hover {
-            background-color: #e0a800;
-        }
-        QPushButton#toggle_list_btn:pressed {
-            background-color: #d39e00;
+            background-color: #45a049; /* Green */
         }
         QPushButton#repeat_weekly_btn {
-            background-color: #17a2b8; /* Teal */
-            border-color: #17a2b8;
-        }
-        QPushButton#repeat_weekly_btn:hover {
-            background-color: #138496;
-        }
-        QPushButton#repeat_weekly_btn:pressed {
-            background-color: #117a8b;
+            background-color: #45a049; /* Green */
         }
         QPushButton#print_btn {
-            background-color: #6c757d; /* Gray */
-            border-color: #6c757d;
-        }
-        QPushButton#print_btn:hover {
-            background-color: #5a6268;
-        }
-        QPushButton#print_btn:pressed {
-            background-color: #545b62;
+            background-color: #45a049; /* Green */
         }
 
-        /* boton Borrar */
+        /* Botón Borrar */
         QPushButton#delete_button {
             background-color: #dc3545; /* Rojo */
             border-color: #dc3545;
+            color: white;
+            border-radius: 5px;
         }
         QPushButton#delete_button:hover {
             background-color: #c82333;
@@ -218,21 +272,30 @@ class AppointmentCalendarWidget(QWidget):
             background-color: #bd2130;
         }
 
-        /* Agregar estilos para el contador de turnos */
+        /* Contador de turnos */
         QLabel#appointment_count_label {
             font-weight: bold;
-            font-size: 14px;
+            font-size: 16px;
         }
         QLabel#appointment_count_number {
             font-weight: bold;
-            font-size: 14px;
-            color: #007bff;
+            font-size: 16px;
+            color: #45a049;
         }
 
-        /* Añadir estilos específicos para los botones de editar y borrar */
-        QPushButton#edit_button, QPushButton#delete_button {
-            padding: 2px;
-            font-size: 11px;
+        /* Botones de editar */
+        QPushButton#edit_button {
+            background-color: #ffc107; /* Amarillo */
+            border: none;
+            color: white;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        QPushButton#edit_button:hover {
+            background-color: #e0a800;
+        }
+        QPushButton#edit_button:pressed {
+            background-color: #d39e00;
         }
         """
         self.setStyleSheet(style)
@@ -242,8 +305,9 @@ class AppointmentCalendarWidget(QWidget):
         bold_font.setBold(True)
         self.appointment_count_label.setFont(bold_font)
         self.appointment_count_number.setFont(bold_font)
-        self.appointment_count_label.setStyleSheet("font-size: 14px;")
-        self.appointment_count_number.setStyleSheet("font-size: 14px; color: #007bff;")
+        self.appointment_count_label.setStyleSheet("font-size: 16px;")
+        self.appointment_count_number.setStyleSheet("font-size: 16px; color: #45a049;")
+
 
     def toggle_calendar(self):
         if self.calendar_widget.isVisible():
@@ -269,18 +333,6 @@ class AppointmentCalendarWidget(QWidget):
             item_widget = QWidget()
             item_layout = QHBoxLayout(item_widget)
             
-            # # Botones de ajuste de tiempo
-            # time_adjust_layout = QVBoxLayout()
-            # up_button = QPushButton("▲")
-            # up_button.setFixedSize(20, 20)
-            # up_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, 30))
-            # down_button = QPushButton("▼")
-            # down_button.setFixedSize(20, 20)
-            # down_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, -30))
-            # time_adjust_layout.addWidget(up_button)
-            # time_adjust_layout.addWidget(down_button)
-            # item_layout.addLayout(time_adjust_layout)
-            
             # Contenido principal del turno
             content_layout = QVBoxLayout()
             
@@ -288,18 +340,18 @@ class AppointmentCalendarWidget(QWidget):
             time_date_client_info = QLabel(f"<b>{index}- {appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
                                            f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
                                            f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
-            time_date_client_info.setStyleSheet("font-size: 13px; color: #333;")
+            time_date_client_info.setStyleSheet("font-size: 14px; color: #333;")
             content_layout.addWidget(time_date_client_info)
             
             # Dirección y teléfono en una línea
             contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
-            contact_info.setStyleSheet("font-size: 12px; color: #555;")
+            contact_info.setStyleSheet("font-size: 13px; color: #555;")
             content_layout.addWidget(contact_info)
             
             # Comentarios del cliente (si existen)
             if appointment.client.comments:
                 client_comments = QLabel(f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}")
-                client_comments.setStyleSheet("font-size: 12px; font-style: italic; color: #666;")
+                client_comments.setStyleSheet("font-size: 13px; font-style: italic; color: #666;")
                 client_comments.setWordWrap(True)
                 content_layout.addWidget(client_comments)
             
@@ -307,7 +359,7 @@ class AppointmentCalendarWidget(QWidget):
             details = QLabel(f"Servicio: {appointment.status or 'No especificado'} - "
                              f"Precio: ${appointment.price or 'No especificado'} - "
                              f"Notas: {appointment.appoint_comment or 'Sin notas'}")
-            details.setStyleSheet("font-size: 12px;")
+            details.setStyleSheet("font-size: 13px;")
             details.setWordWrap(True)
             content_layout.addWidget(details)
             
@@ -319,13 +371,44 @@ class AppointmentCalendarWidget(QWidget):
             buttons_layout.addWidget(confirmed_checkbox)
             
             edit_button = QPushButton("Editar")
-            edit_button.setFixedSize(60, 25)  # Tamaño más pequeño
+            edit_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
+            edit_button.setObjectName("edit_button")
+            edit_button.setStyleSheet("""
+                QPushButton#edit_button {
+                    background-color: #45a049;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    font-size: 12px;
+                }
+                QPushButton#edit_button:hover {
+                    background-color: #3e8e41;
+                }
+                QPushButton#edit_button:pressed {
+                    background-color: #367c39;
+                }
+            """)
             edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
             buttons_layout.addWidget(edit_button)
             
             delete_button = QPushButton("Borrar")
-            delete_button.setFixedSize(60, 25)  # Tamaño más pequeño
+            delete_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
             delete_button.setObjectName("delete_button") 
+            delete_button.setStyleSheet("""
+                QPushButton#delete_button {
+                    background-color: #dc3545;
+                    color: white;
+                    border: none;
+                    border-radius: 5px;
+                    font-size: 12px;
+                }
+                QPushButton#delete_button:hover {
+                    background-color: #c82333;
+                }
+                QPushButton#delete_button:pressed {
+                    background-color: #bd2130;
+                }
+            """)
             delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
             buttons_layout.addWidget(delete_button)
             
@@ -383,7 +466,8 @@ class AppointmentCalendarWidget(QWidget):
             for appointment in appointments:
                 date = QDate(appointment.date.year, appointment.date.month, appointment.date.day)
                 fmt = self.calendar.dateTextFormat(date)
-                fmt.setBackground(QColor(255, 200, 200))
+                fmt.setBackground(QColor(69, 160, 73))  # Verde suave
+                fmt.setForeground(QColor(255, 255, 255))  # Texto blanco
                 self.calendar.setDateTextFormat(date, fmt)
 
             session.commit()
@@ -477,6 +561,7 @@ class PrintAppointmentsDialog(QDialog):
         super().__init__()
         self.date = date
         self.setWindowTitle("Imprimir Turnos")
+        self.setFixedSize(600, 400)
         layout = QVBoxLayout()
         self.setLayout(layout)
 
@@ -516,6 +601,7 @@ class PrintAppointmentsDialog(QDialog):
         dialog = QPrintDialog()
         if dialog.exec_() == QDialog.Accepted:
             self.preview.print_(printer)
+
 
 class AppointmentDialog(QDialog):
     def __init__(self, date, appointment_id=None):
