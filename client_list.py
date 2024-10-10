@@ -31,10 +31,16 @@ class ClientListWidget(QWidget):
         search_layout.addWidget(self.search_button) 
         layout.addLayout(search_layout)
 
+        # Checkbox para alternar entre Stretch e Interactive
+        self.stretch_checkbox = QCheckBox("Ajustar columnas automáticamente")
+        self.stretch_checkbox.setChecked(True)
+        self.stretch_checkbox.stateChanged.connect(self.toggle_stretch_mode)
+        layout.addWidget(self.stretch_checkbox)
+
         # Client table
         self.client_table = QTableWidget()
         self.client_table.setColumnCount(7)
-        self.client_table.setHorizontalHeaderLabels(["Apellido", "Nombre", "Dirección", "Teléfono", "Nombre del perro", "Raza", "Comentarios"])
+        self.client_table.setHorizontalHeaderLabels(["Apellido", "Nombre", "Dirección", "Teléfono", "Perro", "Raza", "Comentarios"])
         self.client_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.client_table.horizontalHeader().sectionClicked.connect(self.sort_table)
         self.client_table.setEditTriggers(QTableWidget.NoEditTriggers)
@@ -270,6 +276,12 @@ class ClientListWidget(QWidget):
     def get_random_breed(self):
         breeds = ["Labrador", "Golden Retriever", "Pastor Alemán", "Bulldog", "Poodle", "Beagle", "Chihuahua", "Boxer", "Dachshund", "Husky Siberiano", "Yorkshire Terrier", "Rottweiler", "Doberman", "Gran Danés", "Schnauzer", "Shih Tzu", "Pomerania", "Cocker Spaniel", "Bulldog Francés", "Caniche", "Mastín", "Bóxer", "Galgo", "Collie", "Basset Hound", "Pug", "Chow Chow", "Bichón Frisé", "Akita Inu", "Setter Irlandés", "Dálmata", "Terranova", "Shar Pei", "Weimaraner", "Bullmastiff", "Pointer", "Samoyedo", "Alaskan Malamute", "Bloodhound", "Cane Corso", "Bernés de la Montaña", "Cavalier King Charles Spaniel", "Corgi", "Whippet", "Bull Terrier", "Papillón", "Pinscher Miniatura", "Vizsla", "Airedale Terrier"]
         return random.choice(breeds)
+
+    def toggle_stretch_mode(self, state):
+        if state == Qt.Checked:
+            self.client_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        else:
+            self.client_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
 class ClientEditDialog(QDialog):
     def __init__(self, client_id):

@@ -28,6 +28,12 @@ class AppointmentSearchWidget(QWidget):
         search_layout.addWidget(self.search_button)
         layout.addLayout(search_layout)
 
+        # Checkbox para alternar entre Stretch e Interactive
+        self.stretch_checkbox = QCheckBox("Ajustar columnas automáticamente")
+        self.stretch_checkbox.setChecked(True)
+        self.stretch_checkbox.stateChanged.connect(self.toggle_stretch_mode)
+        layout.addWidget(self.stretch_checkbox)
+
         # Appointment table
         self.appointment_table = QTableWidget()
         self.appointment_table.setColumnCount(8)
@@ -117,6 +123,13 @@ class AppointmentSearchWidget(QWidget):
             padding: 5px;
             background-color: white;
         }
+        QCheckBox {
+            padding: 5px;
+        }
+        QCheckBox::indicator {
+            width: 18px;
+            height: 18px;
+        }
         """
         self.setStyleSheet(style)
 
@@ -176,7 +189,7 @@ class AppointmentSearchWidget(QWidget):
             self.appointment_table.setItem(row, 5, QTableWidgetItem(str(appointment.price) if appointment.price else ""))
             self.appointment_table.setItem(row, 6, QTableWidgetItem("Sí" if appointment.confirmed else "No"))
             comment = appointment.appoint_comment or ""
-            formatted_comment = (comment[:20].replace('\n', ' ') + '...' if len(comment) > 20 else comment.replace('\n', ' '))
+            formatted_comment = (comment.replace('\n', ' ') + '...' if len(comment) > 100 else comment.replace('\n', ' '))
             self.appointment_table.setItem(row, 7, QTableWidgetItem(formatted_comment))
             for col in range(8):
                 self.appointment_table.item(row, col).setData(Qt.UserRole, appointment.id)
@@ -243,6 +256,12 @@ class AppointmentSearchWidget(QWidget):
         appointment_id = item.data(Qt.UserRole)
         dialog = AppointmentViewDialog(appointment_id)
         dialog.exec_()
+
+    def toggle_stretch_mode(self, state):
+        if state == Qt.Checked:
+            self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        else:
+            self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
 
 class AppointmentViewDialog(QDialog):
     def __init__(self, appointment_id):

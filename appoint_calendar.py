@@ -269,17 +269,17 @@ class AppointmentCalendarWidget(QWidget):
             item_widget = QWidget()
             item_layout = QHBoxLayout(item_widget)
             
-            # Botones de ajuste de tiempo
-            time_adjust_layout = QVBoxLayout()
-            up_button = QPushButton("▲")
-            up_button.setFixedSize(20, 20)
-            up_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, 30))
-            down_button = QPushButton("▼")
-            down_button.setFixedSize(20, 20)
-            down_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, -30))
-            time_adjust_layout.addWidget(up_button)
-            time_adjust_layout.addWidget(down_button)
-            item_layout.addLayout(time_adjust_layout)
+            # # Botones de ajuste de tiempo
+            # time_adjust_layout = QVBoxLayout()
+            # up_button = QPushButton("▲")
+            # up_button.setFixedSize(20, 20)
+            # up_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, 30))
+            # down_button = QPushButton("▼")
+            # down_button.setFixedSize(20, 20)
+            # down_button.clicked.connect(lambda _, a=appointment.id: self.adjust_time(a, -30))
+            # time_adjust_layout.addWidget(up_button)
+            # time_adjust_layout.addWidget(down_button)
+            # item_layout.addLayout(time_adjust_layout)
             
             # Contenido principal del turno
             content_layout = QVBoxLayout()
