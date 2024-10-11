@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QCalendarWidget,
     QCheckBox, QComboBox, QSlider, QTimeEdit, QListWidget, QDialog, QDialogButtonBox,
     QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox,
-    QSplitter, QSplitterHandle
+    QSplitter, QSplitterHandle, QDateEdit
 )
 from PyQt5.QtCore import Qt, QTime, QDate, QPoint, QSize
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter, QPen
@@ -213,6 +213,38 @@ class AppointmentCalendarWidget(QWidget):
     def apply_styles(self):
         """Apply QSS styles to the widgets."""
         style = """
+        QLabel {
+            font-weight: bold;
+            font-size: 14px;
+        }
+        QLineEdit, QComboBox, QTimeEdit, QDateEdit {
+            padding: 5px;
+            border: 1px solid #3498db;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        QDateEdit, QTimeEdit {
+            padding-right: 20px; /* Espacio para el botón de flecha */
+        }
+        QDateEdit::drop-down, QTimeEdit::drop-down {
+            subcontrol-origin: padding;
+            subcontrol-position: top right;
+            width: 20px;
+            border-left: 1px solid #3498db;
+            border-top-right-radius: 3px;
+            border-bottom-right-radius: 3px;
+        }
+        QTextEdit {
+            border: 1px solid #3498db;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        QTextEdit[readOnly="true"] {
+            background-color: #f0f0f0;
+        }
+        QCheckBox {
+            font-size: 14px;
+        }
         QCalendarWidget {
             border: 1px solid #ced4da;
             border-radius: 10px;
@@ -667,17 +699,18 @@ class AppointmentDialog(QDialog):
         client_layout.addWidget(self.client_combo, 1)
         grid_layout.addLayout(client_layout, 1, 0, 1, 2)
 
-        # Hora y Repetición
-        grid_layout.addWidget(QLabel("Hora:"), 2, 0)
-        grid_layout.addWidget(QLabel("Repetición:"), 2, 1)
-        time_repeat_layout = QHBoxLayout()
+        # Fecha y Hora
+        grid_layout.addWidget(QLabel("Fecha:"), 2, 0)
+        grid_layout.addWidget(QLabel("Hora:"), 2, 1)
+        date_time_layout = QHBoxLayout()
+        self.date_edit = QDateEdit()
+        self.date_edit.setCalendarPopup(True)
+        self.date_edit.setDate(QDate(self.date))
         self.time_edit = QTimeEdit()
         self.time_edit.setTime(QTime(9, 0))
-        self.repeat_combo = QComboBox()
-        self.repeat_combo.addItems(["No repetir", "Repetir semanalmente"])
-        time_repeat_layout.addWidget(self.time_edit)
-        time_repeat_layout.addWidget(self.repeat_combo)
-        grid_layout.addLayout(time_repeat_layout, 3, 0, 1, 2)
+        date_time_layout.addWidget(self.date_edit)
+        date_time_layout.addWidget(self.time_edit)
+        grid_layout.addLayout(date_time_layout, 3, 0, 1, 2)
 
         # Confirmado
         self.confirmed_checkbox = QCheckBox("Confirmado")
@@ -704,6 +737,7 @@ class AppointmentDialog(QDialog):
         self.client_comments.setReadOnly(True)
         self.client_comments.setPlaceholderText("Comentarios del cliente")
         self.client_comments.setMaximumHeight(100)
+        self.client_comments.setStyleSheet("background-color: #f0f0f0;")  # Añadir esta línea
         grid_layout.addWidget(self.client_comments, 8, 0, 1, 2)
 
         # Notas del turno
@@ -769,11 +803,30 @@ class AppointmentDialog(QDialog):
                 font-weight: bold;
                 font-size: 14px;
             }
-            QLineEdit, QComboBox, QTimeEdit {
+            QLineEdit, QComboBox, QTimeEdit, QDateEdit {
                 padding: 5px;
                 border: 1px solid #3498db;
                 border-radius: 3px;
                 font-size: 14px;
+            }
+            QDateEdit, QTimeEdit {
+                padding-right: 20px; /* Espacio para el botón de flecha */
+            }
+            QDateEdit::drop-down, QTimeEdit::drop-down {
+                subcontrol-origin: padding;
+                subcontrol-position: top right;
+                width: 20px;
+                border-left: 1px solid #3498db;
+                border-top-right-radius: 3px;
+                border-bottom-right-radius: 3px;
+            }
+            QDateEdit::down-arrow, QTimeEdit::down-arrow {
+                image: url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%233498db' d='M5 8l5 5 5-5z'/%3E%3C/svg%3E);
+                width: 20px;
+                height: 20px;
+            }
+            QDateEdit::down-arrow:hover, QTimeEdit::down-arrow:hover {
+                image: url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%232980b9' d='M5 8l5 5 5-5z'/%3E%3C/svg%3E);
             }
             QTextEdit {
                 border: 1px solid #3498db;
@@ -818,6 +871,7 @@ class AppointmentDialog(QDialog):
         logger.info(f"Cargando datos del turno con ID: {appointment_id}")
         session = Session()
         appointment = session.query(Appointment).get(appointment_id)
+        self.date_edit.setDate(appointment.date)
         self.time_edit.setTime(appointment.time)
         
         # Cargar el cliente del turno
@@ -826,10 +880,6 @@ class AppointmentDialog(QDialog):
         self.client_combo.clear()
         self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
         
-        if appointment.repeat_weekly:
-            self.repeat_combo.setCurrentIndex(1)
-        elif appointment.repeat_monthly:
-            self.repeat_combo.setCurrentIndex(2)
         self.confirmed_checkbox.setChecked(appointment.confirmed)
         self.price_input.setText(str(appointment.price) if appointment.price else "")
         self.service_combo.setCurrentText(appointment.status if appointment.status else "Baño")
@@ -845,8 +895,8 @@ class AppointmentDialog(QDialog):
             QMessageBox.warning(self, "Error", "Por favor, seleccione un cliente.")
             return
 
+        date = self.date_edit.date().toPyDate()
         time = self.time_edit.time().toPyTime()
-        repeat = self.repeat_combo.currentText()
         confirmed = self.confirmed_checkbox.isChecked()
         
         # Manejo mejorado de la conversión del precio
@@ -867,22 +917,18 @@ class AppointmentDialog(QDialog):
 
         if self.appointment_id:
             appointment = session.query(Appointment).get(self.appointment_id)
-            appointment.date = self.date
+            appointment.date = date
             appointment.time = time
             appointment.client_id = client_id
-            appointment.repeat_weekly = (repeat == "Repetir semanalmente")
-            appointment.repeat_monthly = (repeat == "Repetir mensualmente")
             appointment.confirmed = confirmed
             appointment.price = price
             appointment.status = service
             appointment.appoint_comment = notes
         else:
             new_appointment = Appointment(
-                date=self.date,
+                date=date,
                 time=time,
                 client_id=client_id,
-                repeat_weekly=(repeat == "Repetir semanalmente"),
-                repeat_monthly=(repeat == "Repetir mensualmente"),
                 confirmed=confirmed,
                 price=price,
                 status=service,
@@ -900,17 +946,3 @@ class AppointmentDialog(QDialog):
             QMessageBox.critical(self, "Error", f"No se pudo guardar el turno: {str(e)}")
             session.rollback()
             session.close()
-
-    def delete_appointment(self):
-        logger.info(f"Intentando eliminar turno con ID: {self.appointment_id}")
-        confirm = QMessageBox.question(self, "Confirmar Eliminación", 
-                                       "¿Está seguro de que desea eliminar este turno?",
-                                       QMessageBox.Yes | QMessageBox.No)
-        if confirm == QMessageBox.Yes:
-            session = Session()
-            appointment = session.query(Appointment).get(self.appointment_id)
-            session.delete(appointment)
-            session.commit()
-            session.close()
-            logger.info(f"Turno con ID {self.appointment_id} eliminado exitosamente")
-            self.accept()

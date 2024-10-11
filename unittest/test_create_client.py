@@ -31,7 +31,7 @@ class TestCreateClientWidget(unittest.TestCase):
     def test_on_breed_changed(self):
         self.test_breed_selection()
         
-        self.widget.breed_combo.setCurrentText("Labrador")
+        self.widget.breed_combo.setCurrentText("Chihuahua")
         QTest.qWait(100)
         self.assertFalse(self.widget.custom_breed_input.isVisible())
 
@@ -46,7 +46,7 @@ class TestCreateClientWidget(unittest.TestCase):
         self.widget.address_input.setText("Calle 123")
         self.widget.phone_input.setText("1234567890")
         self.widget.dog_name_input.setText("Firulais")
-        self.widget.breed_combo.setCurrentText("Labrador")
+        self.widget.breed_combo.setCurrentText("Chihuahua")
         self.widget.comments_input.setPlainText("Comentario de prueba")
 
         self.widget.create_client()

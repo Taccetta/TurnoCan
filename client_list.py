@@ -286,7 +286,23 @@ class ClientListWidget(QWidget):
         logger.info(f"Editando cliente con ID: {client_id}")
         dialog = ClientEditDialog(client_id)
         if dialog.exec_() == QDialog.Accepted:
-            self.load_clients(self.current_search)
+            # En lugar de recargar toda la lista, actualizamos solo la fila editada
+            self.update_client_row(dialog.client)
+
+    def update_client_row(self, client):
+        for row in range(self.client_table.rowCount()):
+            if self.client_table.item(row, 0).data(Qt.UserRole) == client.id:
+                self.client_table.setItem(row, 0, QTableWidgetItem(client.lastname))
+                self.client_table.setItem(row, 1, QTableWidgetItem(client.name))
+                self.client_table.setItem(row, 2, QTableWidgetItem(client.address))
+                self.client_table.setItem(row, 3, QTableWidgetItem(client.phone))
+                self.client_table.setItem(row, 4, QTableWidgetItem(client.dog_name))
+                self.client_table.setItem(row, 5, QTableWidgetItem(client.breed))
+                self.client_table.setItem(row, 6, QTableWidgetItem(client.comments))
+                for col in range(7):
+                    self.client_table.item(row, col).setData(Qt.UserRole, client.id)
+                break
+        logger.info(f"Fila actualizada para el cliente con ID: {client.id}")
 
     def create_random_clients(self):
         logger.info("Creando 100 clientes aleatorios")
@@ -528,7 +544,6 @@ class ClientEditDialog(QDialog):
             self.client.breed = breed
             self.client.comments = self.comments_input.toPlainText()
             self.session.commit()
-            logger.info(f"Actualizando datos del cliente con ID: {self.client_id}")
             logger.info(f"Cliente con ID {self.client_id} actualizado exitosamente")
             super().accept()
         except ValueError as e:

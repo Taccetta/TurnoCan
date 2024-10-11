@@ -64,14 +64,7 @@ def init_db():
     # Add initial breeds
     session = Session()
     initial_breeds = [
-        "Labrador", "Golden Retriever", "Pastor Alemán", "Bulldog", "Poodle", "Beagle", "Chihuahua",
-        "Boxer", "Salchicha (Dachshund)", "Husky Siberiano", "Yorkshire Terrier", "Rottweiler", "Doberman",
-        "Gran Danés", "Schnauzer", "Shih Tzu", "Pomerania", "Cocker Spaniel", "Bulldog Francés",
-        "Caniche", "Mastín", "Bóxer", "Galgo", "Collie", "Basset Hound", "Pug", "Chow Chow",
-        "Bichón Frisé", "Akita Inu", "Setter Irlandés", "Dálmata", "Terranova", "Shar Pei",
-        "Weimaraner", "Bullmastiff", "Pointer", "Samoyedo", "Alaskan Malamute", "Bloodhound",
-        "Cane Corso", "Bernés de la Montaña", "Cavalier King Charles Spaniel", "Corgi", "Whippet",
-        "Bull Terrier", "Papillón", "Pinscher Miniatura", "Vizsla", "Airedale Terrier"
+        "Salchicha", "Chihuahua"
     ]
     for breed_name in initial_breeds:
         if not session.query(Breed).filter_by(name=breed_name).first():

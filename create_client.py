@@ -51,7 +51,6 @@ class CreateClientWidget(QWidget):
         self.breed_combo = QComboBox()
         self.breed_combo.addItem("Seleccione una raza")
         self.breed_combo.addItem("Otro")
-        self.load_breeds()
 
         self.custom_breed_input = QLineEdit()
         self.custom_breed_input.setPlaceholderText("Ingrese la raza personalizada")
@@ -81,6 +80,9 @@ class CreateClientWidget(QWidget):
 
         # Connecting signals
         self.breed_combo.currentTextChanged.connect(self.on_breed_changed)
+        
+        # Añadimos esta línea para cargar las razas cuando se muestra el widget
+        self.breed_combo.showPopup = self.load_breeds_and_show_popup
 
         # Apply QSS styles
         self.apply_styles(create_client_btn)
@@ -143,10 +145,31 @@ class CreateClientWidget(QWidget):
     def load_breeds(self):
         session = Session()
         breeds = session.query(Breed).order_by(Breed.name).all()
+        
+        # Guardamos el texto actual
+        current_text = self.breed_combo.currentText()
+        
+        # Limpiamos y recargamos el combo box
+        self.breed_combo.clear()
+        self.breed_combo.addItem("Seleccione una raza")
+        self.breed_combo.addItem("Otro")
+        
         for breed in breeds:
             self.breed_combo.addItem(breed.name)
+        
+        # Restauramos el texto seleccionado si aún existe, o seleccionamos el primero
+        index = self.breed_combo.findText(current_text)
+        if index >= 0:
+            self.breed_combo.setCurrentIndex(index)
+        else:
+            self.breed_combo.setCurrentIndex(0)
+        
         session.close()
         logger.info(f"Razas cargadas: {len(breeds)} razas encontradas")
+
+    def load_breeds_and_show_popup(self):
+        self.load_breeds()
+        QComboBox.showPopup(self.breed_combo)
 
     def on_breed_changed(self, text):
         self.custom_breed_input.setVisible(text == "Otro")
