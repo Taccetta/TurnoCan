@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QCalendarWidget,
     QCheckBox, QComboBox, QSlider, QTimeEdit, QListWidget, QDialog, QDialogButtonBox,
     QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox,
-    QSplitter, QSplitterHandle, QDateEdit
+    QSplitter, QSplitterHandle, QDateEdit, QTableWidget, QTableWidgetItem, QHeaderView, QToolButton
 )
 from PyQt5.QtCore import Qt, QTime, QDate, QPoint, QSize
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter, QPen
@@ -81,13 +81,46 @@ class AppointmentCalendarWidget(QWidget):
         self.appointment_count_layout = QHBoxLayout()
         self.appointment_count_label = QLabel("Cantidad Turnos:")
         self.appointment_count_number = QLabel("0")
+        self.view_toggle_checkbox = QCheckBox("Vista de Tabla")
+        self.view_toggle_checkbox.stateChanged.connect(self.toggle_view)
         self.appointment_count_layout.addWidget(self.appointment_count_label)
         self.appointment_count_layout.addWidget(self.appointment_count_number)
+        self.appointment_count_layout.addWidget(self.view_toggle_checkbox)
         self.appointment_count_layout.addStretch()
         appointment_layout.addLayout(self.appointment_count_layout)
         self.appointment_list = QListWidget()
+        self.appointment_table = QTableWidget()
+        self.appointment_table.setColumnCount(9)
+        self.appointment_table.setHorizontalHeaderLabels(["Hora", "Cliente", "Dirección", "Teléfono", "Mascota", "Servicio", "Precio", "Confirmado", "Acciones"])
+        self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        self.appointment_table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)  # Fijar el ancho de la columna de acciones
+        self.appointment_table.setColumnWidth(8, 70)  # Ajustar el ancho de la columna de acciones
+        self.appointment_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.appointment_table.setAlternatingRowColors(True)
+        self.appointment_table.setStyleSheet("""
+            QTableWidget {
+                background-color: #ffffff;
+                alternate-background-color: #f2f2f2;
+                gridline-color: #d3d3d3;
+            }
+            QHeaderView::section {
+                background-color: #4CAF50;
+                color: white;
+                padding: 4px;
+                font-weight: bold;
+            }
+            QTableWidget::item:selected {
+                background-color: #a0a0a0;
+                color: white;
+            }
+        """)
+        self.appointment_table.hide()  # Inicialmente oculta
         appointment_layout.addWidget(self.appointment_list)
+        appointment_layout.addWidget(self.appointment_table)
         self.splitter.addWidget(appointment_widget)
+
+        # Guardar las anchuras originales de las columnas
+        self.original_column_widths = [self.appointment_table.columnWidth(i) for i in range(self.appointment_table.columnCount())]
 
         # Configurar el splitter
         self.splitter.setStyleSheet("""
@@ -151,27 +184,27 @@ class AppointmentCalendarWidget(QWidget):
         """)
         buttons_layout.addWidget(self.toggle_calendar_btn)
 
-        repeat_weekly_btn = QPushButton("Repetir Turnos Semanalmente")
-        repeat_weekly_btn.clicked.connect(self.repeat_weekly_appointments)
-        repeat_weekly_btn.setStyleSheet("""
-            QPushButton {
-                background-color: #45a049;
-                border: none;
-                color: white;
-                padding: 10px 20px;
-                text-align: center;
-                text-decoration: none;
-                font-size: 14px;
-                border-radius: 5px;
-            }
-            QPushButton:hover {
-                background-color: #3e8e41;
-            }
-            QPushButton:pressed {
-                background-color: #367c39;
-            }
-        """)
-        buttons_layout.addWidget(repeat_weekly_btn)
+        # repeat_weekly_btn = QPushButton("Repetir Turnos Semanalmente")
+        # repeat_weekly_btn.clicked.connect(self.repeat_weekly_appointments)
+        # repeat_weekly_btn.setStyleSheet("""
+        #     QPushButton {
+        #         background-color: #45a049;
+        #         border: none;
+        #         color: white;
+        #         padding: 10px 20px;
+        #         text-align: center;
+        #         text-decoration: none;
+        #         font-size: 14px;
+        #         border-radius: 5px;
+        #     }
+        #     QPushButton:hover {
+        #         background-color: #3e8e41;
+        #     }
+        #     QPushButton:pressed {
+        #         background-color: #367c39;
+        #     }
+        # """)
+        # buttons_layout.addWidget(repeat_weekly_btn)
 
         print_btn = QPushButton("Imprimir")
         print_btn.clicked.connect(self.print_appointments)
@@ -373,8 +406,28 @@ class AppointmentCalendarWidget(QWidget):
             self.splitter.setSizes(self.last_visible_sizes)
             self.toggle_calendar_btn.setText("Ocultar Calendario")
 
+    def toggle_view(self, state):
+        if state == Qt.Checked:
+            self.appointment_list.hide()
+            self.appointment_table.show()
+            # Restaurar las anchuras originales de las columnas
+            for i, width in enumerate(self.original_column_widths):
+                if i != 8:  # No cambiar el ancho de la columna de acciones
+                    self.appointment_table.setColumnWidth(i, width)
+            self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Interactive)
+            self.appointment_table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)
+        else:
+            self.appointment_list.show()
+            self.appointment_table.hide()
+            # Guardar las anchuras actuales de las columnas
+            self.original_column_widths = [self.appointment_table.columnWidth(i) for i in range(self.appointment_table.columnCount())]
+            self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+            self.appointment_table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)
+        self.load_appointments()
+
     def load_appointments(self):
         self.appointment_list.clear()
+        self.appointment_table.setRowCount(0)
         selected_date = self.calendar.selectedDate().toPyDate()
         logger.info(f"Cargando turnos para la fecha: {selected_date}")
         session = Session()
@@ -384,97 +437,168 @@ class AppointmentCalendarWidget(QWidget):
         self.appointment_count_number.setText(str(len(appointments)))
         
         for index, appointment in enumerate(appointments, start=1):
-            item_widget = QWidget()
-            item_layout = QHBoxLayout(item_widget)
-            
-            # Contenido principal del turno
-            content_layout = QVBoxLayout()
-            
-            # Número de orden, hora, fecha, cliente y mascota en una línea
-            time_date_client_info = QLabel(f"<b>{index}- {appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
-                                           f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
-                                           f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
-            time_date_client_info.setStyleSheet("font-size: 14px; color: #333;")
-            content_layout.addWidget(time_date_client_info)
-            
-            # Dirección y teléfono en una línea
-            contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
-            contact_info.setStyleSheet("font-size: 13px; color: #555;")
-            content_layout.addWidget(contact_info)
-            
-            # Comentarios del cliente (si existen)
-            if appointment.client.comments:
-                client_comments = QLabel(f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}")
-                client_comments.setStyleSheet("font-size: 13px; font-style: italic; color: #666;")
-                client_comments.setWordWrap(True)
-                content_layout.addWidget(client_comments)
-            
-            # Servicio, precio y notas en una línea
-            details = QLabel(f"Servicio: {appointment.status or 'No especificado'} - "
-                             f"Precio: ${appointment.price or 'No especificado'} - "
-                             f"Notas: {appointment.appoint_comment or 'Sin notas'}")
-            details.setStyleSheet("font-size: 13px;")
-            details.setWordWrap(True)
-            content_layout.addWidget(details)
-            
-            # Botones y checkbox
-            buttons_layout = QHBoxLayout()
-            confirmed_checkbox = QCheckBox("Confirmado")
-            confirmed_checkbox.setChecked(appointment.confirmed)
-            confirmed_checkbox.stateChanged.connect(lambda state, a=appointment.id: self.toggle_confirmation(a, state))
-            buttons_layout.addWidget(confirmed_checkbox)
-            
-            edit_button = QPushButton("Editar")
-            edit_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
-            edit_button.setObjectName("edit_button")
-            edit_button.setStyleSheet("""
-                QPushButton#edit_button {
-                    background-color: #45a049;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    font-size: 12px;
-                }
-                QPushButton#edit_button:hover {
-                    background-color: #3e8e41;
-                }
-                QPushButton#edit_button:pressed {
-                    background-color: #367c39;
-                }
-            """)
-            edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
-            buttons_layout.addWidget(edit_button)
-            
-            delete_button = QPushButton("Borrar")
-            delete_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
-            delete_button.setObjectName("delete_button") 
-            delete_button.setStyleSheet("""
-                QPushButton#delete_button {
-                    background-color: #dc3545;
-                    color: white;
-                    border: none;
-                    border-radius: 5px;
-                    font-size: 12px;
-                }
-                QPushButton#delete_button:hover {
-                    background-color: #c82333;
-                }
-                QPushButton#delete_button:pressed {
-                    background-color: #bd2130;
-                }
-            """)
-            delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
-            buttons_layout.addWidget(delete_button)
-            
-            buttons_layout.addStretch()  # Añadir espacio flexible al final
-            content_layout.addLayout(buttons_layout)
-            
-            item_layout.addLayout(content_layout)
-            
-            list_item = QListWidgetItem(self.appointment_list)
-            list_item.setSizeHint(item_widget.sizeHint())
-            self.appointment_list.addItem(list_item)
-            self.appointment_list.setItemWidget(list_item, item_widget)
+            if not self.view_toggle_checkbox.isChecked():
+                # Vista de lista
+                item_widget = QWidget()
+                item_layout = QHBoxLayout(item_widget)
+                
+                # Contenido principal del turno
+                content_layout = QVBoxLayout()
+                
+                # Número de orden, hora, fecha, cliente y mascota en una línea
+                time_date_client_info = QLabel(f"<b>{index}- {appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
+                                               f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
+                                               f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
+                time_date_client_info.setStyleSheet("font-size: 14px; color: #333;")
+                content_layout.addWidget(time_date_client_info)
+                
+                # Dirección y teléfono en una línea
+                contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
+                contact_info.setStyleSheet("font-size: 13px; color: #555;")
+                content_layout.addWidget(contact_info)
+                
+                # Comentarios del cliente (si existen)
+                if appointment.client.comments:
+                    client_comments = QLabel(f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}")
+                    client_comments.setStyleSheet("font-size: 13px; font-style: italic; color: #666;")
+                    client_comments.setWordWrap(True)
+                    content_layout.addWidget(client_comments)
+                
+                # Servicio, precio y notas en una línea
+                details = QLabel(f"Servicio: {appointment.status or 'No especificado'} - "
+                                 f"Precio: ${appointment.price or 'No especificado'} - "
+                                 f"Notas: {appointment.appoint_comment or 'Sin notas'}")
+                details.setStyleSheet("font-size: 13px;")
+                details.setWordWrap(True)
+                content_layout.addWidget(details)
+                
+                # Botones y checkbox
+                buttons_layout = QHBoxLayout()
+                confirmed_checkbox = QCheckBox("Confirmado")
+                confirmed_checkbox.setChecked(appointment.confirmed)
+                confirmed_checkbox.stateChanged.connect(lambda state, a=appointment.id: self.toggle_confirmation(a, state))
+                buttons_layout.addWidget(confirmed_checkbox)
+                
+                edit_button = QPushButton("Editar")
+                edit_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
+                edit_button.setObjectName("edit_button")
+                edit_button.setStyleSheet("""
+                    QPushButton#edit_button {
+                        background-color: #45a049;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        font-size: 12px;
+                    }
+                    QPushButton#edit_button:hover {
+                        background-color: #3e8e41;
+                    }
+                    QPushButton#edit_button:pressed {
+                        background-color: #367c39;
+                    }
+                """)
+                edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
+                buttons_layout.addWidget(edit_button)
+                
+                delete_button = QPushButton("Borrar")
+                delete_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
+                delete_button.setObjectName("delete_button") 
+                delete_button.setStyleSheet("""
+                    QPushButton#delete_button {
+                        background-color: #dc3545;
+                        color: white;
+                        border: none;
+                        border-radius: 5px;
+                        font-size: 12px;
+                    }
+                    QPushButton#delete_button:hover {
+                        background-color: #c82333;
+                    }
+                    QPushButton#delete_button:pressed {
+                        background-color: #bd2130;
+                    }
+                """)
+                delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
+                buttons_layout.addWidget(delete_button)
+                
+                buttons_layout.addStretch()  # Añadir espacio flexible al final
+                content_layout.addLayout(buttons_layout)
+                
+                item_layout.addLayout(content_layout)
+                
+                list_item = QListWidgetItem(self.appointment_list)
+                list_item.setSizeHint(item_widget.sizeHint())
+                self.appointment_list.addItem(list_item)
+                self.appointment_list.setItemWidget(list_item, item_widget)
+            else:
+                # Vista de tabla
+                row_position = self.appointment_table.rowCount()
+                self.appointment_table.insertRow(row_position)
+                
+                self.appointment_table.setItem(row_position, 0, QTableWidgetItem(appointment.time.strftime('%H:%M')))
+                self.appointment_table.setItem(row_position, 1, QTableWidgetItem(f"{appointment.client.lastname} {appointment.client.name}"))
+                self.appointment_table.setItem(row_position, 2, QTableWidgetItem(appointment.client.address))
+                self.appointment_table.setItem(row_position, 3, QTableWidgetItem(appointment.client.phone))
+                self.appointment_table.setItem(row_position, 4, QTableWidgetItem(f"{appointment.client.dog_name} ({appointment.client.breed})"))
+                self.appointment_table.setItem(row_position, 5, QTableWidgetItem(appointment.status or "No especificado"))
+                self.appointment_table.setItem(row_position, 6, QTableWidgetItem(f"${appointment.price}" if appointment.price else "No especificado"))
+                
+                # Checkbox para confirmar (centrado)
+                confirmed_checkbox = QCheckBox()
+                confirmed_checkbox.setChecked(appointment.confirmed)
+                confirmed_checkbox.stateChanged.connect(lambda state, a=appointment.id: self.toggle_confirmation(a, state))
+                
+                # Crear un widget contenedor para el checkbox
+                checkbox_container = QWidget()
+                checkbox_layout = QHBoxLayout(checkbox_container)
+                checkbox_layout.addWidget(confirmed_checkbox)
+                checkbox_layout.setAlignment(Qt.AlignCenter)
+                checkbox_layout.setContentsMargins(0, 0, 0, 0)
+                
+                self.appointment_table.setCellWidget(row_position, 7, checkbox_container)
+                
+                # Botones de acción
+                actions_widget = QWidget()
+                actions_layout = QHBoxLayout(actions_widget)
+                actions_layout.setContentsMargins(0, 0, 0, 0)
+                actions_layout.setSpacing(2)
+                
+                edit_button = QToolButton()
+                edit_button.setText("E")
+                edit_button.setStyleSheet("""
+                    QToolButton {
+                        background-color: #007bff;
+                        color: white;
+                        border: none;
+                        padding: 3px;
+                        border-radius: 3px;
+                    }
+                    QToolButton:hover {
+                        background-color: #0056b3;
+                    }
+                """)
+                edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
+                actions_layout.addWidget(edit_button)
+                
+                delete_button = QToolButton()
+                delete_button.setText("x")
+                delete_button.setStyleSheet("""
+                    QToolButton {
+                        background-color: #dc3545;
+                        color: white;
+                        border: none;
+                        padding: 3px;
+                        border-radius: 3px;
+                    }
+                    QToolButton:hover {
+                        background-color: #c82333;
+                    }
+                """)
+                delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
+                actions_layout.addWidget(delete_button)
+                
+                actions_layout.addStretch()  # Añadir espacio flexible al final
+                self.appointment_table.setCellWidget(row_position, 8, actions_widget)
         
         session.close()
         logger.info(f"Se cargaron {len(appointments)} turnos para la fecha {selected_date}")

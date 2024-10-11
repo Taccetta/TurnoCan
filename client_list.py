@@ -3,7 +3,7 @@ from PyQt5.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLa
                              QTimeEdit, QListWidget, QDialog, QDialogButtonBox, QTextEdit,
                              QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout,
                              QTableWidget, QTableWidgetItem, QHeaderView)
-from PyQt5.QtCore import Qt, QTime, QDate, QTimer
+from PyQt5.QtCore import Qt, QTime, QDate, QTimer, pyqtSignal
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor
 from sqlalchemy import or_, desc
 from database import Session, Client, Appointment, Breed
@@ -285,9 +285,19 @@ class ClientListWidget(QWidget):
         client_id = item.data(Qt.UserRole)
         logger.info(f"Editando cliente con ID: {client_id}")
         dialog = ClientEditDialog(client_id)
+        dialog.clientDeleted.connect(self.remove_client_from_table)  # Conectar la señal a un nuevo método
         if dialog.exec_() == QDialog.Accepted:
-            # En lugar de recargar toda la lista, actualizamos solo la fila editada
             self.update_client_row(dialog.client)
+
+    def remove_client_from_table(self, client_id):
+        for row in range(self.client_table.rowCount()):
+            if self.client_table.item(row, 0).data(Qt.UserRole) == client_id:
+                self.client_table.removeRow(row)
+                break
+        self.total_clients -= 1
+        self.update_pagination_controls()
+        self.update_client_count()
+        logger.info(f"Cliente con ID {client_id} eliminado de la tabla")
 
     def update_client_row(self, client):
         for row in range(self.client_table.rowCount()):
@@ -350,6 +360,8 @@ class ClientListWidget(QWidget):
 
 
 class ClientEditDialog(QDialog):
+    clientDeleted = pyqtSignal(int)  # Nueva señal para indicar que un cliente fue eliminado
+
     def __init__(self, client_id):
         super().__init__()
         self.client_id = client_id
@@ -570,6 +582,7 @@ class ClientEditDialog(QDialog):
                 self.session.delete(self.client)
                 self.session.commit()
                 logger.info(f"Cliente con ID {self.client_id} y sus turnos futuros eliminados exitosamente")
+                self.clientDeleted.emit(self.client_id)  # Emitir señal con el ID del cliente eliminado
                 super().accept()
             except Exception as e:
                 logger.error(f"Error al eliminar cliente con ID {self.client_id}: {str(e)}")
