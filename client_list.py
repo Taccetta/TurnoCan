@@ -537,10 +537,10 @@ class ClientEditDialog(QDialog):
             # Actualizar los datos del cliente
             self.client.lastname = self.lastname_input.text().strip().capitalize()
             self.client.name = self.name_input.text().strip().capitalize()
-            self.client.address = self.address_input.text().strip().capitalize()
+            self.client.address = (t := self.address_input.text().strip())[0].upper() + t[1:]
             self.client.phone = self.phone_input.text().strip()
             self.client.dog_name = self.dog_name_input.text().strip().capitalize()
-            
+
             self.client.breed = breed
             self.client.comments = self.comments_input.toPlainText()
             self.session.commit()

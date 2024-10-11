@@ -40,6 +40,9 @@ class TestCreateClientWidget(unittest.TestCase):
     def test_create_client_success(self, mock_qmessage_box, mock_session):
         mock_session_instance = MagicMock()
         mock_session.return_value = mock_session_instance
+        
+        # Simulamos que la raza ya existe
+        mock_session_instance.query().filter().first.return_value = MagicMock()
 
         self.widget.lastname_input.setText("Pérez")
         self.widget.name_input.setText("Juan")
@@ -51,9 +54,30 @@ class TestCreateClientWidget(unittest.TestCase):
 
         self.widget.create_client()
 
+        # Verificamos que se llamó a add una vez
         mock_session_instance.add.assert_called_once()
+        
+        # Verificamos que el cliente añadido tiene los datos correctos
+        added_client = mock_session_instance.add.call_args[0][0]
+        self.assertEqual(added_client.lastname, "Pérez")
+        self.assertEqual(added_client.name, "Juan")
+        self.assertEqual(added_client.address, "Calle 123")
+        self.assertEqual(added_client.phone, "1234567890")
+        self.assertEqual(added_client.dog_name, "Firulais")
+        self.assertEqual(added_client.breed, "Chihuahua")
+        self.assertEqual(added_client.comments, "Comentario de prueba")
+
         mock_session_instance.commit.assert_called_once()
         mock_qmessage_box.information.assert_called_once()
+
+        # Verificamos que los campos se han limpiado
+        self.assertEqual(self.widget.lastname_input.text(), "")
+        self.assertEqual(self.widget.name_input.text(), "")
+        self.assertEqual(self.widget.address_input.text(), "")
+        self.assertEqual(self.widget.phone_input.text(), "")
+        self.assertEqual(self.widget.dog_name_input.text(), "")
+        self.assertEqual(self.widget.breed_combo.currentText(), "Seleccione una raza")
+        self.assertEqual(self.widget.comments_input.toPlainText(), "")
 
     @patch('create_client.Session')
     @patch('create_client.QMessageBox')

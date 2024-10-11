@@ -650,19 +650,26 @@ class PrintAppointmentsDialog(QDialog):
     def load_appointments(self):
         session = Session()
         appointments = session.query(Appointment).filter(Appointment.date == self.date).order_by(Appointment.time).all()
-        text = ""
+        text = f"Turnos para el {self.date.strftime('%d/%m/%Y')}\n\n"
         for appointment in appointments:
-            text += f"{appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}  -  {appointment.client.lastname} {appointment.client.name}  -  "
-            text += f"Perro: {appointment.client.dog_name}  -  Raza: {appointment.client.breed}  -  "
-            text += f"Dirección: {appointment.client.address}  -  Teléfono: {appointment.client.phone}\n"
-            if appointment.client.comments:
-                text += f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}  -  "
-            text += f"Servicio: {appointment.status or 'No especificado'}  -  "
-            text += f"Precio: ${appointment.price or 'No especificado'}  -  "
-            text += f"Notas: {appointment.appoint_comment or 'Sin notas'}\n"
+            text += f"{appointment.time.strftime('%H:%M')} - {appointment.client.lastname} {appointment.client.name} - "
+            text += f"{appointment.client.dog_name} ({appointment.client.breed}) - "
+            text += f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}\n"
+            
+            text += f"Servicio: {appointment.status or 'No esp.'} - Precio: ${appointment.price or 'No esp.'}"
             if appointment.confirmed:
-                text += "CONFIRMADO\n"
+                text += " - CONFIRMADO"
             text += "\n"
+            
+            comments = []
+            if appointment.client.comments:
+                comments.append(f"Comentarios: {appointment.client.comments.strip()}")
+            if appointment.appoint_comment:
+                comments.append(f"Notas: {appointment.appoint_comment.strip()}")
+            if comments:
+                text += " - ".join(comments) + "\n"
+            
+            text += "_" * 90 + "\n"
         self.preview.setText(text)
         session.close()
 
