@@ -943,14 +943,7 @@ class AppointmentDialog(QDialog):
             QDateEdit, QTimeEdit {
                 padding-right: 20px; /* Espacio para el botón de flecha */
             }
-            QDateEdit::drop-down, QTimeEdit::drop-down {
-                subcontrol-origin: padding;
-                subcontrol-position: top right;
-                width: 20px;
-                border-left: 1px solid #3498db;
-                border-top-right-radius: 3px;
-                border-bottom-right-radius: 3px;
-            }
+            /* 
             QDateEdit::down-arrow, QTimeEdit::down-arrow {
                 image: url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%233498db' d='M5 8l5 5 5-5z'/%3E%3C/svg%3E);
                 width: 20px;
@@ -959,6 +952,7 @@ class AppointmentDialog(QDialog):
             QDateEdit::down-arrow:hover, QTimeEdit::down-arrow:hover {
                 image: url(data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath fill='%232980b9' d='M5 8l5 5 5-5z'/%3E%3C/svg%3E);
             }
+            */
             QTextEdit {
                 border: 1px solid #3498db;
                 border-radius: 3px;

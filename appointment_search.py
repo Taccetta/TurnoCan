@@ -56,7 +56,7 @@ class AppointmentSearchWidget(QWidget):
         # Appointment table
         self.appointment_table = QTableWidget()
         self.appointment_table.setColumnCount(8)
-        self.appointment_table.setHorizontalHeaderLabels(["Fecha", "Hora", "Cliente", "Perro", "Estado", "Precio", "Confirmado", "Notas"])
+        self.appointment_table.setHorizontalHeaderLabels(["Fecha", "Hora", "Cliente", "Perro", "Servicio", "Precio", "Confirmado", "Notas"])
         self.appointment_table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
         self.appointment_table.setAlternatingRowColors(True)
         self.appointment_table.setStyleSheet("""
