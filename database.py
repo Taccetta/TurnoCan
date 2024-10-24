@@ -4,6 +4,7 @@ from sqlalchemy.orm import sessionmaker, relationship, declarative_base
 from sqlalchemy.sql import func
 from sqlalchemy import inspect
 import datetime
+import sys
 
 Base = declarative_base()
 
@@ -49,11 +50,18 @@ class Appointment(Base):
 
     client = relationship("Client", back_populates="appointments")
 
-# Obtener la ruta absoluta del directorio del archivo main.py
-main_dir = os.path.dirname(os.path.abspath(__file__))
+def get_current_dir():
+    try:
+        # Intenta obtener la ruta del archivo ejecutable (para main.exe)
+        return os.path.dirname(os.path.abspath(sys.executable))
+    except AttributeError:
+        # Si no es posible, obtén la ruta del archivo .py actual (para main.py)
+        return os.path.dirname(os.path.abspath(__file__))
 
-# Construir la ruta de la base de datos en base a la ubicación del archivo main.py
+# Obtener la ruta absoluta del directorio del archivo main.py
+main_dir = get_current_dir()
 db_path = os.path.join(main_dir, 'dog_grooming.db')
+
 
 engine = create_engine(f'sqlite:///{db_path}')
 Session = sessionmaker(bind=engine)
