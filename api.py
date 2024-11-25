@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 from database import Session, Appointment, Client
 from sqlalchemy.exc import IntegrityError
+from datetime import datetime
 
 app = Flask(__name__)
 
@@ -43,8 +44,8 @@ def create_appointment():
     data = request.json
     session = Session()
     new_appointment = Appointment(
-        date=data['date'],
-        time=data['time'],
+        date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
+        time=datetime.strptime(data['time'], '%H:%M').time(),
         client_id=data['client_id'],
         status=data['status'],
         price=data['price'],
