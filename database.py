@@ -51,17 +51,25 @@ class Appointment(Base):
     client = relationship("Client", back_populates="appointments")
 
 def get_current_dir():
-    try:
-        # Intenta obtener la ruta del archivo ejecutable (para main.exe)
-        return os.path.dirname(os.path.abspath(sys.executable))
-    except AttributeError:
-        # Si no es posible, obtén la ruta del archivo .py actual (para main.py)
-        return os.path.dirname(os.path.abspath(__file__))
 
-# Obtener la ruta absoluta del directorio del archivo main.py
+    # Comprobar si estamos ejecutando desde un ejecutable compilado por PyInstaller
+    frozen = getattr(sys, 'frozen', False)
+    
+    if frozen:
+        # Si estamos en un ejecutable compilado, usar el directorio del ejecutable
+        application_path = os.path.dirname(sys.executable)
+        print(f"Ejecutando desde ejecutable. Directorio: {application_path}")
+        return application_path
+    else:
+        # Si estamos en modo desarrollo, usar el directorio del archivo actual
+        application_path = os.path.dirname(os.path.abspath(__file__))
+        print(f"Ejecutando desde código Python. Directorio: {application_path}")
+        return application_path
+
+# Obtener la ruta absoluta del directorio según el modo de ejecución
 main_dir = get_current_dir()
 db_path = os.path.join(main_dir, 'dog_grooming.db')
-
+print(f"Base de datos configurada en: {db_path}")
 
 engine = create_engine(f'sqlite:///{db_path}')
 Session = sessionmaker(bind=engine)

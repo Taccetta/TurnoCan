@@ -466,7 +466,7 @@ class ClientEditDialog(QDialog):
             min-width: 100px;
         }
         QPushButton#ok-button {
-            background-color: #28a745; /* Green for OK */
+            background-color: #28a745; /* Verde para OK */
             color: white;
             border: 2px solid #28a745;
         }
@@ -477,7 +477,7 @@ class ClientEditDialog(QDialog):
             background-color: #1e7e34;
         }
         QPushButton#cancel-button {
-            background-color: #ffc107; /* Yellow for Cancel */
+            background-color: #ffc107; /* Amarillo para Cancel */
             color: white;
             border: 2px solid #ffc107;
         }
@@ -488,7 +488,7 @@ class ClientEditDialog(QDialog):
             background-color: #d39e00;
         }
         QPushButton#delete-button {
-            background-color: #dc3545; /* Red for Delete */
+            background-color: #dc3545; /* Rojo para Delete */
             color: white;
             border: 2px solid #dc3545;
             margin-top: 10px;

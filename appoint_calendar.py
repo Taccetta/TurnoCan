@@ -11,12 +11,14 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QLabel, QLineEdit, QCalendarWidget,
     QCheckBox, QComboBox, QSlider, QTimeEdit, QListWidget, QDialog, QDialogButtonBox,
     QTextEdit, QScrollArea, QFrame, QListWidgetItem, QInputDialog, QGridLayout, QMessageBox,
-    QSplitter, QSplitterHandle, QDateEdit, QTableWidget, QTableWidgetItem, QHeaderView, QToolButton
+    QSplitter, QSplitterHandle, QDateEdit, QTableWidget, QTableWidgetItem, QHeaderView, QToolButton,
+    QSystemTrayIcon
 )
-from PyQt5.QtCore import Qt, QTime, QDate, QPoint, QSize
+from PyQt5.QtCore import Qt, QTime, QDate, QPoint, QSize, QTimer
 from PyQt5.QtGui import QIcon, QTextCharFormat, QColor, QFont, QDoubleValidator, QPainter, QPen
 from PyQt5.QtPrintSupport import QPrinter, QPrintDialog
 from logging.handlers import RotatingFileHandler
+from background_tasks import BackgroundTaskManager
 
 def setup_logger():
     logger = logging.getLogger('appoint_calendar')
@@ -62,6 +64,9 @@ class AppointmentCalendarWidget(QWidget):
         layout = QVBoxLayout()
         self.setLayout(layout)
 
+        # Iniciar el administrador de tareas en segundo plano
+        self.task_manager = BackgroundTaskManager(self)
+
         # Crear QSplitter
         self.splitter = QSplitter(Qt.Horizontal)
         self.splitter.setHandleWidth(10)
@@ -71,23 +76,95 @@ class AppointmentCalendarWidget(QWidget):
         # Calendario
         self.calendar_widget = QWidget()
         calendar_layout = QVBoxLayout(self.calendar_widget)
+        
+        # Añadir un título al calendario con fecha actual
+        self.calendar_header = QLabel()
+        self.calendar_header.setAlignment(Qt.AlignCenter)
+        self.calendar_header.setStyleSheet("font-size: 16px; font-weight: bold; color: #45a049; margin-bottom: 5px;")
+        calendar_layout.addWidget(self.calendar_header)
+        
         self.calendar = QCalendarWidget()
+        self.calendar.setGridVisible(True)  # Mostrar cuadrícula para mejor visibilidad
+        self.calendar.setVerticalHeaderFormat(QCalendarWidget.NoVerticalHeader)  # Quitar números de semana
         calendar_layout.addWidget(self.calendar)
+        
+        # Añadir leyenda para el calendario
+        # legend_layout = QHBoxLayout()
+        # legend_label = QLabel("Leyenda:")
+        # legend_label.setStyleSheet("font-weight: bold;")
+        # legend_layout.addWidget(legend_label)
+        
+        # appointment_color = QLabel()
+        # appointment_color.setFixedSize(16, 16)
+        # appointment_color.setStyleSheet("background-color: #45a049; border: 1px solid #333;")
+        # legend_layout.addWidget(appointment_color)
+        
+        # appointment_text = QLabel("Día con turnos")
+        # legend_layout.addWidget(appointment_text)
+        
+        # today_color = QLabel()
+        # today_color.setFixedSize(16, 16)
+        # today_color.setStyleSheet("background-color: #f0f0f0; border: 1px solid #333;")
+        # legend_layout.addWidget(today_color)
+        
+        # today_text = QLabel("Día actual")
+        # legend_layout.addWidget(today_text)
+        
+        # legend_layout.addStretch()
+        # calendar_layout.addLayout(legend_layout)
+        
         self.splitter.addWidget(self.calendar_widget)
 
         # Lista de turnos
         appointment_widget = QWidget()
         appointment_layout = QVBoxLayout(appointment_widget)
+        
+        # Título de la lista de turnos
+        self.appointment_header = QLabel()
+        self.appointment_header.setAlignment(Qt.AlignCenter)
+        self.appointment_header.setStyleSheet("font-size: 16px; font-weight: bold; margin-bottom: 5px;")
+        appointment_layout.addWidget(self.appointment_header)
+        
         self.appointment_count_layout = QHBoxLayout()
         self.appointment_count_label = QLabel("Cantidad Turnos:")
         self.appointment_count_number = QLabel("0")
+        
+        # Añadir botón de actualización manual
+        # self.refresh_btn = QPushButton("Actualizar")
+        # self.refresh_btn.setToolTip("Actualizar turnos")
+        # self.refresh_btn.setFixedSize(28, 28)
+        # self.refresh_btn.clicked.connect(self.refresh_appointments)
+        # self.refresh_btn.setStyleSheet("""
+        #     QPushButton {
+        #         background-color: #45a049;
+        #         color: white;
+        #         border-radius: 14px;
+        #         font-weight: bold;
+        #     }
+        #     QPushButton:hover {
+        #         background-color: #3e8e41;
+        #     }
+        # """)
+        
         self.view_toggle_checkbox = QCheckBox("Vista de Tabla")
         self.view_toggle_checkbox.stateChanged.connect(self.toggle_view)
         self.appointment_count_layout.addWidget(self.appointment_count_label)
         self.appointment_count_layout.addWidget(self.appointment_count_number)
+        # self.appointment_count_layout.addWidget(self.refresh_btn)
         self.appointment_count_layout.addWidget(self.view_toggle_checkbox)
         self.appointment_count_layout.addStretch()
         appointment_layout.addLayout(self.appointment_count_layout)
+        
+        # Añadir barra de búsqueda para filtrar turnos
+        search_layout = QHBoxLayout()
+        search_label = QLabel("Buscar:")
+        self.search_input = QLineEdit()
+        self.search_input.setPlaceholderText("Filtrar por cliente, mascota o servicio...")
+        self.search_input.textChanged.connect(self.filter_appointments)
+        search_layout.addWidget(search_label)
+        search_layout.addWidget(self.search_input)
+        appointment_layout.addLayout(search_layout)
+        
         self.appointment_list = QListWidget()
         self.appointment_table = QTableWidget()
         self.appointment_table.setColumnCount(9)
@@ -184,27 +261,28 @@ class AppointmentCalendarWidget(QWidget):
         """)
         buttons_layout.addWidget(self.toggle_calendar_btn)
 
-        # repeat_weekly_btn = QPushButton("Repetir Turnos Semanalmente")
-        # repeat_weekly_btn.clicked.connect(self.repeat_weekly_appointments)
-        # repeat_weekly_btn.setStyleSheet("""
-        #     QPushButton {
-        #         background-color: #45a049;
-        #         border: none;
-        #         color: white;
-        #         padding: 10px 20px;
-        #         text-align: center;
-        #         text-decoration: none;
-        #         font-size: 14px;
-        #         border-radius: 5px;
-        #     }
-        #     QPushButton:hover {
-        #         background-color: #3e8e41;
-        #     }
-        #     QPushButton:pressed {
-        #         background-color: #367c39;
-        #     }
-        # """)
-        # buttons_layout.addWidget(repeat_weekly_btn)
+        # Agregar botón para repetir turnos
+        repeat_weekly_btn = QPushButton("Repetir Turnos")
+        repeat_weekly_btn.clicked.connect(self.repeat_weekly_appointments)
+        repeat_weekly_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #45a049;
+                border: none;
+                color: white;
+                padding: 10px 20px;
+                text-align: center;
+                text-decoration: none;
+                font-size: 14px;
+                border-radius: 5px;
+            }
+            QPushButton:hover {
+                background-color: #3e8e41;
+            }
+            QPushButton:pressed {
+                background-color: #367c39;
+            }
+        """)
+        buttons_layout.addWidget(repeat_weekly_btn)
 
         print_btn = QPushButton("Imprimir")
         print_btn.clicked.connect(self.print_appointments)
@@ -234,14 +312,53 @@ class AppointmentCalendarWidget(QWidget):
         self.calendar.selectionChanged.connect(self.load_appointments)
         self.calendar.currentPageChanged.connect(self.update_calendar)
         self.calendar.selectionChanged.connect(self.update_calendar)
+        self.calendar.selectionChanged.connect(self.update_headers)
+        
+        # Nuevo: Mejorar la actualización al cambiar el mes
+        # Detectar el cambio de página (mes) del calendario de forma más robusta
+        self.calendar.currentPageChanged.connect(self.on_month_changed)
 
-        # Load calendar data
-        self.update_calendar()
+        # Configurar el temporizador para actualización automática
+        self.refresh_timer = QTimer(self)
+        self.refresh_timer.timeout.connect(self.refresh_appointments)
+        self.refresh_timer.start(60000)  # Actualizar cada 60 segundos
+        
+        # Variable para mantener los datos de búsqueda
+        self.search_text = ""
+        self.all_appointments = []
+        
+        # Crear notificador de sistema
+        self.tray_icon = None
+        if QSystemTrayIcon.isSystemTrayAvailable():
+            self.tray_icon = QSystemTrayIcon(self)
+            self.tray_icon.setIcon(QIcon("icon.png"))  # Asegúrate de tener un icon.png
+            self.tray_icon.setToolTip("TurnosCan - Próximos turnos")
 
         # Apply styles
         self.apply_styles()
 
-        logger.info("AppointmentCalendarWidget inicializado")
+        # Inicializar la vista del calendario
+        self.init_calendar_view()
+
+        logger.info("AppointmentCalendarWidget inicializado con temporizador de actualización")
+    
+    def update_headers(self):
+        selected_date = self.calendar.selectedDate()
+        
+        # Actualizar encabezado del calendario
+        today = QDate.currentDate()
+        month_name = selected_date.toString("MMMM yyyy")
+        month_name = month_name[0].upper() + month_name[1:]
+        self.calendar_header.setText(f"Calendario - {month_name}")
+        
+        # Actualizar encabezado de la lista de turnos
+        day_name = selected_date.toString("dddd d 'de' MMMM, yyyy")
+        day_name = day_name[0].upper() + day_name[1:]
+        
+        if selected_date == today:
+            day_name += " (Hoy)"
+        
+        self.appointment_header.setText(f"Turnos para: {day_name}")
 
     def apply_styles(self):
         """Apply QSS styles to the widgets."""
@@ -425,17 +542,84 @@ class AppointmentCalendarWidget(QWidget):
             self.appointment_table.horizontalHeader().setSectionResizeMode(8, QHeaderView.Fixed)
         self.load_appointments()
 
-    def load_appointments(self):
+    def filter_appointments(self):
+        """Filtra los turnos según el texto de búsqueda"""
+        self.search_text = self.search_input.text().lower()
+        self.load_appointments(reload_data=False)  # No recargar de la base de datos
+    
+    def refresh_appointments(self):
+        """Actualiza los turnos manualmente"""
+        logger.info("Actualizando turnos manualmente")
+        self.load_appointments(reload_data=True)
+        self.update_calendar()
+        
+        # Notificar sobre próximos turnos
+        self.check_upcoming_appointments()
+
+    def load_appointments(self, reload_data=True):
+        """Carga los turnos para la fecha seleccionada"""
         self.appointment_list.clear()
         self.appointment_table.setRowCount(0)
         selected_date = self.calendar.selectedDate().toPyDate()
         logger.info(f"Cargando turnos para la fecha: {selected_date}")
-        session = Session()
-        appointments = session.query(Appointment).filter(Appointment.date == selected_date).order_by(Appointment.time).all()
         
-        # Actualizar el contador de turnos
-        self.appointment_count_number.setText(str(len(appointments)))
+        if reload_data:
+            session = Session()
+            try:
+                # Usar joinedload para cargar los clientes junto con las citas en una sola consulta
+                # Esto evita el error DetachedInstanceError
+                from sqlalchemy.orm import joinedload
+                query = session.query(Appointment).options(
+                    joinedload(Appointment.client)
+                ).filter(
+                    Appointment.date == selected_date
+                ).order_by(Appointment.time)
+                
+                # Convertir a lista mientras la sesión aún está abierta
+                self.all_appointments = list(query.all())
+            finally:
+                # Asegurarse de que la sesión se cierre incluso si hay un error
+                session.close()
         
+        # Filtrar por búsqueda si hay texto
+        filtered_appointments = []
+        if self.search_text:
+            for appointment in self.all_appointments:
+                # Crear copia local de los datos que necesitamos para evitar accesos tardíos
+                if appointment.client:
+                    client_name = f"{appointment.client.lastname} {appointment.client.name}".lower()
+                    dog_name = appointment.client.dog_name.lower() if appointment.client.dog_name else ""
+                    address = appointment.client.address.lower() if appointment.client.address else ""
+                    phone = appointment.client.phone.lower() if appointment.client.phone else ""
+                    appoint_comment = appointment.appoint_comment.lower() if appointment.appoint_comment else ""
+                    
+                    if (self.search_text in client_name or 
+                        self.search_text in dog_name or 
+                        self.search_text in address or 
+                        self.search_text in phone or
+                        self.search_text in appoint_comment):
+                        filtered_appointments.append(appointment)
+                else:
+                    # Si por alguna razón no hay cliente asociado
+                    appoint_comment = appointment.appoint_comment.lower() if appointment.appoint_comment else ""
+                    if self.search_text in appoint_comment:
+                        filtered_appointments.append(appointment)
+        else:
+            filtered_appointments = self.all_appointments
+            
+        # Actualizar el contador de turnos mostrados vs totales
+        if len(filtered_appointments) == len(self.all_appointments):
+            self.appointment_count_number.setText(str(len(filtered_appointments)))
+        else:
+            self.appointment_count_number.setText(f"{len(filtered_appointments)}/{len(self.all_appointments)}")
+        
+        # Procesar y mostrar los turnos
+        self._display_appointments(filtered_appointments)
+        
+        logger.info(f"Se cargaron {len(filtered_appointments)} turnos para la fecha {selected_date}")
+    
+    def _display_appointments(self, appointments):
+        """Muestra los turnos en la vista correspondiente (lista o tabla)"""
         for index, appointment in enumerate(appointments, start=1):
             if not self.view_toggle_checkbox.isChecked():
                 # Vista de lista
@@ -446,100 +630,125 @@ class AppointmentCalendarWidget(QWidget):
                 content_layout = QVBoxLayout()
                 
                 # Número de orden, hora, fecha, cliente y mascota en una línea
-                time_date_client_info = QLabel(f"<b>{index}- {appointment.time.strftime('%H:%M')} - {appointment.date.strftime('%d/%m/%Y')}</b> - "
-                                               f"<b>{appointment.client.lastname} {appointment.client.name}</b> - "
-                                               f"Perro: <i>{appointment.client.dog_name}</i> ({appointment.client.breed})")
+                time_str = appointment.time.strftime('%H:%M')
+                
+                # Manejar posible ausencia de cliente
+                if appointment.client:
+                    client_name = f"{appointment.client.lastname} {appointment.client.name}"
+                    dog_info = f"{appointment.client.dog_name} ({appointment.client.breed})" if appointment.client.dog_name else ""
+                else:
+                    client_name = "Cliente desconocido"
+                    dog_info = "Sin información"
+                
+                # Destacar horario con color según confirmación
+                if appointment.confirmed:
+                    time_color = "#006400"  # Verde oscuro para confirmados
+                    status = "✓"
+                else:
+                    time_color = "#8B0000"  # Rojo oscuro para no confirmados
+                    status = "✗"
+                
+                time_date_client_info = QLabel(f"<b style='color:{time_color};'>{time_str} {status}</b> - "
+                                              f"<b>{client_name}</b> - "
+                                              f"Perro: <i>{dog_info}</i>")
                 time_date_client_info.setStyleSheet("font-size: 14px; color: #333;")
                 content_layout.addWidget(time_date_client_info)
                 
                 # Dirección y teléfono en una línea
-                contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
-                contact_info.setStyleSheet("font-size: 13px; color: #555;")
-                content_layout.addWidget(contact_info)
+                if appointment.client:
+                    contact_info = QLabel(f"Dirección: {appointment.client.address} - Tel: {appointment.client.phone}")
+                    contact_info.setStyleSheet("font-size: 13px; color: #555;")
+                    content_layout.addWidget(contact_info)
                 
-                # Comentarios del cliente (si existen)
-                if appointment.client.comments:
-                    client_comments = QLabel(f"Comentarios del cliente: {appointment.client.comments.replace('\n', ' ')}")
-                    client_comments.setStyleSheet("font-size: 13px; font-style: italic; color: #666;")
-                    client_comments.setWordWrap(True)
-                    content_layout.addWidget(client_comments)
-                
-                # Servicio, precio y notas en una línea
-                details = QLabel(f"Servicio: {appointment.status or 'No especificado'} - "
-                                 f"Precio: ${appointment.price or 'No especificado'} - "
-                                 f"Notas: {appointment.appoint_comment or 'Sin notas'}")
-                details.setStyleSheet("font-size: 13px;")
-                details.setWordWrap(True)
-                content_layout.addWidget(details)
-                
-                # Botones y checkbox
-                buttons_layout = QHBoxLayout()
-                confirmed_checkbox = QCheckBox("Confirmado")
-                confirmed_checkbox.setChecked(appointment.confirmed)
-                confirmed_checkbox.stateChanged.connect(lambda state, a=appointment.id: self.toggle_confirmation(a, state))
-                buttons_layout.addWidget(confirmed_checkbox)
-                
-                edit_button = QPushButton("Editar")
-                edit_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
-                edit_button.setObjectName("edit_button")
-                edit_button.setStyleSheet("""
-                    QPushButton#edit_button {
-                        background-color: #45a049;
-                        color: white;
-                        border: none;
-                        border-radius: 5px;
-                        font-size: 12px;
-                    }
-                    QPushButton#edit_button:hover {
-                        background-color: #3e8e41;
-                    }
-                    QPushButton#edit_button:pressed {
-                        background-color: #367c39;
-                    }
-                """)
-                edit_button.clicked.connect(lambda _, a=appointment.id: self.edit_appointment(a))
-                buttons_layout.addWidget(edit_button)
-                
-                delete_button = QPushButton("Borrar")
-                delete_button.setFixedSize(80, 30)  # Aumentamos el ancho del botón
-                delete_button.setObjectName("delete_button") 
-                delete_button.setStyleSheet("""
-                    QPushButton#delete_button {
-                        background-color: #dc3545;
-                        color: white;
-                        border: none;
-                        border-radius: 5px;
-                        font-size: 12px;
-                    }
-                    QPushButton#delete_button:hover {
-                        background-color: #c82333;
-                    }
-                    QPushButton#delete_button:pressed {
-                        background-color: #bd2130;
-                    }
-                """)
-                delete_button.clicked.connect(lambda _, a=appointment.id: self.delete_appointment(a))
-                buttons_layout.addWidget(delete_button)
-                
-                buttons_layout.addStretch()  # Añadir espacio flexible al final
-                content_layout.addLayout(buttons_layout)
+                # Precio y comentario
+                if appointment.price or appointment.appoint_comment:
+                    price_str = f"Precio: ${appointment.price}" if appointment.price else ""
+                    comment_str = f"Nota: {appointment.appoint_comment}" if appointment.appoint_comment else ""
+                    separator = " - " if price_str and comment_str else ""
+                    price_comment = QLabel(f"{price_str}{separator}{comment_str}")
+                    price_comment.setStyleSheet("font-size: 13px; color: #555; font-style: italic;")
+                    content_layout.addWidget(price_comment)
                 
                 item_layout.addLayout(content_layout)
                 
-                list_item = QListWidgetItem(self.appointment_list)
+                # Contenedor de botones con layout vertical
+                buttons_container = QWidget()
+                buttons_layout = QVBoxLayout(buttons_container)
+                buttons_layout.setContentsMargins(0, 0, 0, 0)
+                buttons_layout.setSpacing(2)
+                
+                # Botones de acción
+                edit_btn = QPushButton("Editar")
+                edit_btn.setToolTip("Editar Turno")
+                edit_btn.setFixedSize(100, 40)
+                appointment_id = appointment.id
+                edit_btn.clicked.connect(lambda checked=False, id=appointment_id: self.edit_appointment(id))
+                edit_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #4CAF50;
+                        color: white;
+                        border-radius: 2px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover { background-color: #45a049; }
+                """)
+                
+                delete_btn = QPushButton("Eliminar")
+                delete_btn.setToolTip("Eliminar Turno")
+                delete_btn.setFixedSize(100, 40) 
+                delete_btn.clicked.connect(lambda checked=False, id=appointment_id: self.delete_appointment(id))
+                delete_btn.setStyleSheet("""
+                    QPushButton {
+                        background-color: #f44336;
+                        color: white;
+                        border-radius: 2px;
+                        font-weight: bold;
+                    }
+                    QPushButton:hover { background-color: #d32f2f; }
+                """)
+                
+                # Checkbox para confirmar turno
+                confirm_check = QCheckBox("Confirmado")
+                confirm_check.setChecked(appointment.confirmed)
+                confirm_check.stateChanged.connect(lambda state, id=appointment_id: self.toggle_confirmation(id, state))
+                
+                # Agregar widgets al layout de botones
+                top_buttons = QHBoxLayout()
+                top_buttons.addWidget(edit_btn)
+                top_buttons.addWidget(delete_btn)
+                buttons_layout.addLayout(top_buttons)
+                buttons_layout.addWidget(confirm_check)
+                
+                item_layout.addWidget(buttons_container)
+                
+                # Crear y configurar el item de la lista
+                list_item = QListWidgetItem()
                 list_item.setSizeHint(item_widget.sizeHint())
                 self.appointment_list.addItem(list_item)
                 self.appointment_list.setItemWidget(list_item, item_widget)
+                
+                # Alternar colores de fondo
+                if index % 2 == 0:
+                    item_widget.setStyleSheet("background-color: #f8f8f8;")
             else:
                 # Vista de tabla
                 row_position = self.appointment_table.rowCount()
                 self.appointment_table.insertRow(row_position)
                 
                 self.appointment_table.setItem(row_position, 0, QTableWidgetItem(appointment.time.strftime('%H:%M')))
-                self.appointment_table.setItem(row_position, 1, QTableWidgetItem(f"{appointment.client.lastname} {appointment.client.name}"))
-                self.appointment_table.setItem(row_position, 2, QTableWidgetItem(appointment.client.address))
-                self.appointment_table.setItem(row_position, 3, QTableWidgetItem(appointment.client.phone))
-                self.appointment_table.setItem(row_position, 4, QTableWidgetItem(f"{appointment.client.dog_name} ({appointment.client.breed})"))
+                
+                # Comprobar si hay cliente antes de acceder a sus propiedades
+                if appointment.client:
+                    self.appointment_table.setItem(row_position, 1, QTableWidgetItem(f"{appointment.client.lastname} {appointment.client.name}"))
+                    self.appointment_table.setItem(row_position, 2, QTableWidgetItem(appointment.client.address))
+                    self.appointment_table.setItem(row_position, 3, QTableWidgetItem(appointment.client.phone))
+                    self.appointment_table.setItem(row_position, 4, QTableWidgetItem(f"{appointment.client.dog_name} ({appointment.client.breed})"))
+                else:
+                    self.appointment_table.setItem(row_position, 1, QTableWidgetItem("Cliente desconocido"))
+                    self.appointment_table.setItem(row_position, 2, QTableWidgetItem(""))
+                    self.appointment_table.setItem(row_position, 3, QTableWidgetItem(""))
+                    self.appointment_table.setItem(row_position, 4, QTableWidgetItem(""))
+                
                 self.appointment_table.setItem(row_position, 5, QTableWidgetItem(appointment.status or "No especificado"))
                 self.appointment_table.setItem(row_position, 6, QTableWidgetItem(f"${appointment.price}" if appointment.price else "No especificado"))
                 
@@ -599,9 +808,6 @@ class AppointmentCalendarWidget(QWidget):
                 
                 actions_layout.addStretch()  # Añadir espacio flexible al final
                 self.appointment_table.setCellWidget(row_position, 8, actions_widget)
-        
-        session.close()
-        logger.info(f"Se cargaron {len(appointments)} turnos para la fecha {selected_date}")
 
     def adjust_time(self, appointment_id, minutes):
         session = Session()
@@ -617,53 +823,40 @@ class AppointmentCalendarWidget(QWidget):
     def toggle_confirmation(self, appointment_id, state):
         logger.info(f"Cambiando estado de confirmación del turno ID {appointment_id} a {'confirmado' if state == Qt.Checked else 'no confirmado'}")
         session = Session()
-        appointment = session.query(Appointment).get(appointment_id)
-        appointment.confirmed = state == Qt.Checked
-        session.commit()
-        session.close()
-        self.load_appointments()
+        try:
+            appointment = session.query(Appointment).get(appointment_id)
+            if appointment:
+                appointment.confirmed = state == Qt.Checked
+                session.commit()
+                logger.info(f"Estado de confirmación actualizado para turno ID {appointment_id}")
+            else:
+                logger.warning(f"No se encontró el turno con ID {appointment_id} para cambiar confirmación")
+        except Exception as e:
+            logger.error(f"Error al cambiar estado de confirmación: {str(e)}")
+            session.rollback()
+            QMessageBox.critical(self, "Error", f"No se pudo cambiar el estado: {str(e)}")
+        finally:
+            session.close()
+        
+        # Recargar los datos para actualizar la interfaz
+        self.load_appointments(reload_data=True)
 
     def update_calendar(self):
         current_date = self.calendar.selectedDate()
         year, month = current_date.year(), current_date.month()
         
-        start_date = QDate(year, month, 1)
-        days_in_month = start_date.daysInMonth()
-
-        # Resetear formato de fechas
-        for day in range(1, days_in_month + 1):
-            date = QDate(year, month, day)
-            self.calendar.setDateTextFormat(date, QTextCharFormat())
-
-        # Obtener citas y establecer formato
-        session = Session()
-        try:
-            appointments = session.query(Appointment).filter(
-                extract('month', Appointment.date) == month,
-                extract('year', Appointment.date) == year
-            ).all()
-
-            for appointment in appointments:
-                date = QDate(appointment.date.year, appointment.date.month, appointment.date.day)
-                fmt = self.calendar.dateTextFormat(date)
-                fmt.setBackground(QColor(69, 160, 73))  # Verde suave
-                fmt.setForeground(QColor(255, 255, 255))  # Texto blanco
-                self.calendar.setDateTextFormat(date, fmt)
-
-            session.commit()
-        except Exception as e:
-            session.rollback()
-            print(f"Error al actualizar el calendario: {str(e)}")
-        finally:
-            session.close()
-
-        logger.info(f"Actualizando calendario para el mes: {current_date.month()}/{current_date.year()}")
+        # Llamar al método específico para marcar días con turnos
+        self.highlight_appointment_days(year, month)
+        
+        logger.info(f"Calendario actualizado para el mes: {month}/{year}")
 
     def create_appointment(self):
         logger.info("Iniciando creación de nuevo turno")
         session = Session()
-        clients = session.query(Client).all()
-        session.close()
+        try:
+            clients = session.query(Client).all()
+        finally:
+            session.close()
         
         if not clients:
             QMessageBox.warning(self, "Error", "No existen clientes. Cree un cliente primero para guardar un turno.")
@@ -672,7 +865,7 @@ class AppointmentCalendarWidget(QWidget):
         dialog = AppointmentDialog(self.calendar.selectedDate().toPyDate())
         if dialog.exec_():
             logger.info("Nuevo turno creado exitosamente")
-            self.load_appointments()
+            self.load_appointments(reload_data=True)  # Recargar para obtener datos actualizados
             self.update_calendar()
         else:
             logger.info("Creación de turno cancelada")
@@ -681,7 +874,8 @@ class AppointmentCalendarWidget(QWidget):
         logger.info(f"Editando turno con ID: {appointment_id}")
         dialog = AppointmentDialog(self.calendar.selectedDate().toPyDate(), appointment_id)
         if dialog.exec_():
-            self.load_appointments()
+            # Recargar datos para evitar usar objetos detached
+            self.load_appointments(reload_data=True)
             self.update_calendar()
 
     def delete_appointment(self, appointment_id):
@@ -691,12 +885,23 @@ class AppointmentCalendarWidget(QWidget):
                                        QMessageBox.Yes | QMessageBox.No)
         if confirm == QMessageBox.Yes:
             session = Session()
-            appointment = session.query(Appointment).get(appointment_id)
-            session.delete(appointment)
-            session.commit()
-            session.close()
-            logger.info(f"Turno con ID {appointment_id} eliminado exitosamente")
-            self.load_appointments()
+            try:
+                appointment = session.query(Appointment).get(appointment_id)
+                if appointment:
+                    session.delete(appointment)
+                    session.commit()
+                    logger.info(f"Turno con ID {appointment_id} eliminado exitosamente")
+                else:
+                    logger.warning(f"No se encontró el turno con ID {appointment_id} para eliminar")
+            except Exception as e:
+                logger.error(f"Error al eliminar turno: {str(e)}")
+                session.rollback()
+                QMessageBox.critical(self, "Error", f"No se pudo eliminar el turno: {str(e)}")
+            finally:
+                session.close()
+            
+            # Recargar datos para actualizar la interfaz
+            self.load_appointments(reload_data=True)
             self.update_calendar()
 
     def toggle_appointment_list(self):
@@ -746,6 +951,158 @@ class AppointmentCalendarWidget(QWidget):
  
     def createHandle(self):
         return CustomSplitterHandle(self.orientation(), self)
+
+    def check_upcoming_appointments(self):
+        """Verifica si hay turnos próximos y notifica al usuario"""
+        if not self.tray_icon:
+            return
+            
+        current_time = datetime.datetime.now().time()
+        current_date = datetime.date.today()
+        
+        session = Session()
+        try:
+            # Usar joinedload para cargar también los clientes
+            from sqlalchemy.orm import joinedload
+            
+            # Buscar turnos en las próximas 2 horas
+            two_hours_later = (datetime.datetime.combine(datetime.date.today(), current_time) + 
+                             datetime.timedelta(hours=2)).time()
+            
+            upcoming_appointments = session.query(Appointment).options(
+                joinedload(Appointment.client)
+            ).filter(
+                Appointment.date == current_date,
+                Appointment.time > current_time,
+                Appointment.time <= two_hours_later
+            ).order_by(Appointment.time).all()
+            
+            if upcoming_appointments:
+                message = "Próximos turnos:\n"
+                for appointment in upcoming_appointments:
+                    if appointment.client:
+                        client_name = f"{appointment.client.lastname} {appointment.client.name}"
+                    else:
+                        client_name = "Cliente desconocido"
+                    time_str = appointment.time.strftime('%H:%M')
+                    message += f"• {time_str} - {client_name}\n"
+                
+                self.tray_icon.showMessage(
+                    "Recordatorio de Turnos",
+                    message,
+                    QSystemTrayIcon.Information,
+                    10000  # Mostrar por 10 segundos
+                )
+        except Exception as e:
+            logger.error(f"Error al verificar turnos próximos: {str(e)}")
+        finally:
+            session.close()
+
+    def notify_upcoming_appointments(self, appointments):
+        """Recibe notificaciones de turnos próximos desde las tareas en segundo plano"""
+        if not self.tray_icon:
+            return
+            
+        if appointments:
+            message = "Próximos turnos:\n"
+            for appointment in appointments:
+                message += f"• {appointment['time']} - {appointment['client_name']}\n"
+            
+            self.tray_icon.showMessage(
+                "Recordatorio de Turnos",
+                message,
+                QSystemTrayIcon.Information,
+                10000  # Mostrar por 10 segundos
+            )
+    
+    def refresh_calendar_data(self):
+        """Actualiza los datos del calendario cuando hay cambios en la base de datos"""
+        logger.info("Actualizando calendario por cambios en la base de datos")
+        # Guardar la fecha seleccionada actual
+        current_selected_date = self.calendar.selectedDate()
+        
+        # Actualizar calendario y citas
+        self.update_calendar()
+        
+        # Solo recargar las citas si el día seleccionado es el actual
+        # Esto evita interrupciones inesperadas al usuario si está viendo otro día
+        if current_selected_date == QDate.currentDate():
+            self.load_appointments(reload_data=True)
+
+    def closeEvent(self, event):
+        """Evento que se dispara al cerrar el widget"""
+        if hasattr(self, 'task_manager'):
+            self.task_manager.stop()
+        event.accept()
+
+    def on_month_changed(self, year, month):
+        """
+        Función específica para manejar el cambio de mes en el calendario.
+        Actualiza la visualización para mostrar los días con turnos inmediatamente.
+        """
+        logger.info(f"Cambio de mes detectado: {month}/{year}")
+        
+        # Actualizar el formato de fechas para este mes
+        self.highlight_appointment_days(year, month)
+        
+        # Actualizar el encabezado del calendario
+        self.update_headers()
+    
+    def highlight_appointment_days(self, year, month):
+        """
+        Marca específicamente los días que tienen turnos en el mes seleccionado.
+        """
+        # Resetear formato de fechas para el mes actual
+        start_date = QDate(year, month, 1)
+        days_in_month = start_date.daysInMonth()
+        
+        for day in range(1, days_in_month + 1):
+            date = QDate(year, month, day)
+            self.calendar.setDateTextFormat(date, QTextCharFormat())
+        
+        # Consultar y marcar días con turnos
+        session = Session()
+        try:
+            # Usar una consulta SQL más eficiente para obtener solo los días distintos que tienen turnos
+            from sqlalchemy import func, distinct
+            
+            # Obtener solo los días únicos que tienen turnos
+            days_with_appointments = session.query(
+                func.extract('day', Appointment.date).label('day')
+            ).filter(
+                extract('month', Appointment.date) == month,
+                extract('year', Appointment.date) == year
+            ).distinct().all()
+            
+            # Aplicar formato a esos días
+            for day_result in days_with_appointments:
+                day = int(day_result[0])  # Extraer el número del día
+                date = QDate(year, month, day)
+                fmt = self.calendar.dateTextFormat(date)
+                fmt.setBackground(QColor(69, 160, 73))  # Verde suave
+                fmt.setForeground(QColor(255, 255, 255))  # Texto blanco
+                self.calendar.setDateTextFormat(date, fmt)
+                
+            logger.info(f"Se marcaron {len(days_with_appointments)} días con turnos en {month}/{year}")
+        except Exception as e:
+            logger.error(f"Error al marcar días con turnos: {str(e)}")
+        finally:
+            session.close()
+    
+    def init_calendar_view(self):
+        """
+        Inicializa la vista del calendario marcando los días con turnos
+        para el mes actual y estableciendo la selección en la fecha actual.
+        """
+        today = QDate.currentDate()
+        # Establecer la fecha actual como seleccionada
+        self.calendar.setSelectedDate(today)
+        # Marcar los días con turnos
+        self.highlight_appointment_days(today.year(), today.month())
+        # Cargar los turnos para la fecha actual
+        self.load_appointments()
+        # Actualizar encabezados
+        self.update_headers()
 
 
 class PrintAppointmentsDialog(QDialog):
@@ -970,12 +1327,18 @@ class AppointmentDialog(QDialog):
         client_id = self.client_combo.currentData()
         if client_id:
             session = Session()
-            client = session.query(Client).get(client_id)
-            if client:
-                self.client_comments.setText(client.comments)
-            else:
+            try:
+                client = session.query(Client).get(client_id)
+                if client:
+                    self.client_comments.setText(client.comments or "")
+                else:
+                    self.client_comments.clear()
+                    logger.warning(f"No se encontró el cliente con ID {client_id}")
+            except Exception as e:
+                logger.error(f"Error al cargar comentarios del cliente: {str(e)}")
                 self.client_comments.clear()
-            session.close()
+            finally:
+                session.close()
         else:
             self.client_comments.clear()
 
@@ -995,22 +1358,41 @@ class AppointmentDialog(QDialog):
     def load_appointment(self, appointment_id):
         logger.info(f"Cargando datos del turno con ID: {appointment_id}")
         session = Session()
-        appointment = session.query(Appointment).get(appointment_id)
-        self.date_edit.setDate(appointment.date)
-        self.time_edit.setTime(appointment.time)
-        
-        # Cargar el cliente del turno
-        client = appointment.client
-        self.client_search.setText(f"{client.lastname} {client.name}")
-        self.client_combo.clear()
-        self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
-        
-        self.confirmed_checkbox.setChecked(appointment.confirmed)
-        self.price_input.setText(str(appointment.price) if appointment.price else "")
-        self.service_combo.setCurrentText(appointment.status if appointment.status else "Baño")
-        self.notes_input.setText(appointment.appoint_comment if appointment.appoint_comment else "")
-        self.update_client_comments()
-        session.close()
+        try:
+            # Usar joinedload para cargar el cliente junto con la cita
+            from sqlalchemy.orm import joinedload
+            appointment = session.query(Appointment).options(
+                joinedload(Appointment.client)
+            ).get(appointment_id)
+            
+            if not appointment:
+                logger.error(f"No se encontró el turno con ID: {appointment_id}")
+                QMessageBox.critical(self, "Error", "No se pudo cargar el turno solicitado.")
+                return
+                
+            self.date_edit.setDate(appointment.date)
+            self.time_edit.setTime(appointment.time)
+            
+            # Cargar el cliente del turno
+            if appointment.client:
+                client = appointment.client
+                self.client_search.setText(f"{client.lastname} {client.name}")
+                self.client_combo.clear()
+                self.client_combo.addItem(f"{client.lastname} {client.name}", client.id)
+            else:
+                logger.warning(f"El turno con ID {appointment_id} no tiene cliente asociado")
+                self.client_combo.clear()
+            
+            self.confirmed_checkbox.setChecked(appointment.confirmed)
+            self.price_input.setText(str(appointment.price) if appointment.price else "")
+            self.service_combo.setCurrentText(appointment.status if appointment.status else "Baño")
+            self.notes_input.setText(appointment.appoint_comment if appointment.appoint_comment else "")
+            self.update_client_comments()
+        except Exception as e:
+            logger.error(f"Error al cargar datos del turno: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error al cargar el turno: {str(e)}")
+        finally:
+            session.close()
 
     def accept(self):
         session = Session()

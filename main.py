@@ -47,8 +47,8 @@ def prompt_password():
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     
-    if not prompt_password():
-        sys.exit(0) 
+    #if not prompt_password():
+    #    sys.exit(0) 
     
     try:
         init_db()
